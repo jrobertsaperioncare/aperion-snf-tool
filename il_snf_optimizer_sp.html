@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IL SNF Rate Optimizer — SharePoint Edition</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --bg:#0a0e14;--surface:#111820;--surface2:#192030;--border:#1e2d40;--border2:#2a3f58;
+    --text:#c8d8e8;--text2:#6a8aaa;--text3:#3d5570;
+    --accent:#00c8ff;--accent2:#0080cc;
+    --green:#00e87a;--green2:#00a055;--red:#ff4060;--red2:#cc2040;
+    --amber:#ffb020;--amber2:#cc8010;--purple:#a060ff;
+    --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.5;min-height:100vh}
+
+  /* ── HEADER ── */
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:8px}
+  .header-title{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.05em}
+  .header-sub{font-size:10px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase}
+  .tabs{display:flex;gap:2px;flex-wrap:wrap}
+  .tab{font-family:var(--mono);font-size:11px;padding:5px 12px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;letter-spacing:.04em;transition:all .15s}
+  .tab:hover{border-color:var(--border2);color:var(--text)}
+  .tab.active{background:var(--accent2);border-color:var(--accent);color:#fff}
+
+  /* ── STATUS BAR ── */
+  .status-bar{display:flex;align-items:center;gap:12px;padding:7px 20px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:11px;flex-wrap:wrap}
+  .status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .sd-green{background:var(--green)}.sd-amber{background:var(--amber)}.sd-red{background:var(--red)}.sd-gray{background:var(--text3)}
+  .status-label{font-family:var(--mono);font-size:10px;color:var(--text2)}
+  .status-val{font-family:var(--mono);font-size:10px;color:var(--text);font-weight:500}
+
+  /* ── LAYOUT ── */
+  .main{padding:16px 20px;max-width:1600px;margin:0 auto}
+  .page{display:none}.page.active{display:block}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+
+  /* ── CARDS ── */
+  .card{background:var(--surface);border:1px solid var(--border);padding:14px}
+  .card-title{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .card-title::before{content:'';display:inline-block;width:3px;height:10px;background:var(--accent)}
+  .sec-hd{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin:16px 0 10px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+
+  /* ── FORMS ── */
+  .form-row{margin-bottom:10px}
+  .form-label{display:block;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+  input[type="number"],input[type="text"],input[type="password"],input[type="date"],select,textarea{
+    width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);
+    font-family:var(--mono);font-size:13px;padding:6px 9px;outline:none;transition:border-color .15s}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+  select option{background:var(--surface)}
+  .slider-wrap{display:flex;align-items:center;gap:10px}
+  .slider-wrap input[type="range"]{flex:1;height:4px;-webkit-appearance:none;background:var(--border2);outline:none;padding:0}
+  .slider-wrap input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--accent);cursor:pointer}
+  .slider-val{font-family:var(--mono);font-size:13px;color:var(--accent);min-width:44px;text-align:right}
+
+  /* ── BUTTONS ── */
+  .btn{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;padding:8px 16px;border:1px solid;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+  .btn-primary{background:var(--accent2);border-color:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent)}
+  .btn-secondary{background:transparent;border-color:var(--border2);color:var(--text2)}.btn-secondary:hover{border-color:var(--text2);color:var(--text)}
+  .btn-danger{background:transparent;border-color:var(--red2);color:var(--red)}.btn-danger:hover{background:var(--red2);color:#fff}
+  .btn-success{background:var(--green2);border-color:var(--green);color:#fff}.btn-success:hover{background:var(--green);color:#000}
+  .btn-amber{background:transparent;border-color:var(--amber2);color:var(--amber)}.btn-amber:hover{background:var(--amber2);color:#000}
+  .btn-sm{padding:5px 11px;font-size:10px}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+
+  /* ── TABLE ── */
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;padding:7px 8px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap;background:var(--surface)}
+  td{padding:7px 8px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:12px;white-space:nowrap}
+  tr:hover td{background:var(--surface2)}
+  .pos{color:var(--green)}.neg{color:var(--red)}.warn{color:var(--amber)}.muted{color:var(--text2)}
+
+  /* ── BADGES ── */
+  .badge{display:inline-block;font-family:var(--mono);font-size:9px;font-weight:600;padding:2px 7px;letter-spacing:.06em;text-transform:uppercase}
+  .bg{background:#003322;color:var(--green);border:1px solid var(--green2)}
+  .br{background:#330010;color:var(--red);border:1px solid var(--red2)}
+  .ba{background:#2a1a00;color:var(--amber);border:1px solid var(--amber2)}
+  .bb{background:#001833;color:var(--accent);border:1px solid var(--accent2)}
+
+  /* ── RESULT ROW ── */
+  .rrow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
+  .rrow:last-child{border-bottom:none}
+  .rkey{font-size:11px;color:var(--text2)}.rval{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text)}
+  .sep{border-top:1px solid var(--border);margin:12px 0}
+
+  /* ── ALERTS ── */
+  .alert{padding:10px 14px;border-left:3px solid;margin-bottom:12px;font-size:12px;line-height:1.6}
+  .alert-info{border-color:var(--accent);background:#001828}.alert-warn{border-color:var(--amber);background:#1a1000}
+  .alert-ok{border-color:var(--green);background:#001a10}.alert-err{border-color:var(--red);background:#200010}
+  .alert strong{font-weight:600}
+
+  /* ── WEEKLY TRACKER ── */
+  .wt-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border)}
+  .wt-wrap{overflow-x:auto;overflow-y:auto;max-height:62vh;border:1px solid var(--border)}
+  .wt{border-collapse:collapse;min-width:100%}
+  .wt th{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;background:var(--surface2);z-index:5}
+  .wt th.wk-snap{background:rgba(255,176,32,.12);color:var(--amber);border-bottom:2px solid var(--amber2)}
+  .wt td{padding:4px 6px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);font-family:var(--mono);font-size:12px;white-space:nowrap;vertical-align:middle}
+  .wt tr:hover td{background:var(--surface2)}
+  .fac-sticky{font-family:var(--sans);font-weight:500;font-size:12px;color:var(--text);position:sticky;left:0;background:var(--surface);z-index:3;min-width:138px;border-right:2px solid var(--border2) !important}
+  .fac-sticky:hover{background:var(--surface2) !important}
+  .goal-td{background:#070c12 !important;color:var(--text3);font-size:11px;text-align:center}
+  .cell-in{width:60px;background:transparent;border:none;border-bottom:1px solid var(--border2);color:inherit;font-family:var(--mono);font-size:12px;padding:1px 3px;outline:none;text-align:center;display:block}
+  .cell-in:focus{border-bottom-color:var(--accent);background:rgba(0,200,255,.06)}
+  .snap-td{background:rgba(255,176,32,.05) !important;border-left:2px solid var(--amber2) !important}
+  .sync-spin{animation:spin 1s linear infinite;display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── SETUP WIZARD ── */
+  .wizard-step{background:var(--surface);border:1px solid var(--border);padding:20px;margin-bottom:16px}
+  .step-num{font-family:var(--mono);font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+  .step-title{font-size:16px;font-weight:500;margin-bottom:12px}
+  .step-body{font-size:13px;color:var(--text2);line-height:1.7}
+  .code-block{font-family:var(--mono);font-size:12px;background:var(--bg);border:1px solid var(--border2);padding:12px 14px;margin:10px 0;color:var(--amber);line-height:1.7;white-space:pre-wrap;word-break:break-all}
+  .inline-code{font-family:var(--mono);font-size:11px;background:var(--bg);border:1px solid var(--border2);padding:1px 6px;color:var(--amber)}
+
+  /* ── FORMULA ── */
+  .formula{font-family:var(--mono);font-size:12px;background:var(--bg);border:1px solid var(--border);padding:10px 12px;color:var(--text2);margin:8px 0;line-height:1.8}
+  .formula .hl{color:var(--accent)}.formula .hl2{color:var(--green)}.formula .hl3{color:var(--amber)}
+
+  /* ── METRIC ── */
+  .metric-label{font-size:10px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px}
+  .metric-val{font-family:var(--mono);font-size:22px;font-weight:600;color:var(--accent);letter-spacing:-.02em}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<div class="header">
+  <div>
+    <div class="header-title">▸ IL SNF RATE OPTIMIZER — SharePoint Edition</div>
+    <div class="header-sub">aperion.sharepoint.com/sites/RegionalReimbursementTeam</div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('weekly',this)">Weekly Tracker</button>
+    <button class="tab" onclick="switchTab('calc',this)">Rate Calc</button>
+    <button class="tab" onclick="switchTab('scenario',this)">Scenarios</button>
+    <button class="tab" onclick="switchTab('strive',this)">STRIVE Tool</button>
+    <button class="tab" onclick="switchTab('setup',this)">⚙ SP Setup</button>
+  </div>
+</div>
+
+<!-- ═══ STATUS BAR ═══ -->
+<div class="status-bar">
+  <div class="status-dot" id="sp_dot" style="background:var(--text3)"></div>
+  <span class="status-label">SharePoint:</span>
+  <span class="status-val" id="sp_status">Not connected — running in local mode</span>
+  <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
+    <span class="status-label">Last sync:</span>
+    <span class="status-val" id="last_sync">—</span>
+    <button class="btn btn-secondary btn-sm" id="sync_btn" onclick="syncToSharePoint()" disabled>↑ Sync to SP</button>
+    <button class="btn btn-secondary btn-sm" id="load_btn" onclick="loadFromSharePoint()" disabled>↓ Load from SP</button>
+    <button class="btn btn-amber btn-sm" onclick="saveLocal()">💾 Save Locally</button>
+  </span>
+</div>
+
+<div class="main">
+
+<!-- ══════════ TAB: WEEKLY TRACKER ══════════ -->
+<div id="tab-weekly" class="page active">
+
+  <div class="wt-controls">
+    <button class="btn btn-primary btn-sm" onclick="addWeek()">+ Add Week</button>
+    <button class="btn btn-secondary btn-sm" onclick="removeLastWeek()">− Remove Last</button>
+    <button class="btn btn-secondary btn-sm" onclick="loadDefaultFacs()">↺ Reset Facilities</button>
+    <div style="display:flex;align-items:center;gap:6px">
+      <label class="form-label" style="margin:0;white-space:nowrap;font-size:10px">Snapshot wk:</label>
+      <input type="number" id="snap_wk" min="1" max="20" value="13" style="width:50px" oninput="renderWT()">
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <label class="form-label" style="margin:0;white-space:nowrap;font-size:10px">Natl hPPD:</label>
+      <input type="number" id="wt_nat" value="3.88886" step="0.00001" style="width:78px" oninput="renderWT()">
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <label class="form-label" style="margin:0;white-space:nowrap;font-size:10px">IL Adj:</label>
+      <input type="number" id="wt_adj" value="0.7122" step="0.0001" style="width:64px" oninput="renderWT()">
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <label class="form-label" style="margin:0;white-space:nowrap;font-size:10px">Rate period:</label>
+      <select id="wt_period" style="width:110px;font-size:11px" onchange="renderWT()">
+        <option>Q1 2026</option><option>Q2 2026</option><option>Q3 2026</option><option>Q4 2026</option><option>Q1 2027</option>
+      </select>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <button class="btn btn-success btn-sm" onclick="exportXLSX()">⬇ Excel</button>
+      <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨 Print</button>
+    </div>
+  </div>
+
+  <div class="alert alert-info" id="wt_hint">
+    <strong>Data entry:</strong> CMI and Med A Rate are entered by your consultants. hPPD is entered by RVPs.
+    Snapshot column (wk <span id="snap_wk_lbl">13</span>) is highlighted amber — that week's CMI sets your next rate.
+    <span id="sp_hint"> Data saves locally in your browser. Connect SharePoint in the <strong>⚙ SP Setup</strong> tab for team-shared storage.</span>
+  </div>
+
+  <div id="wt_container"></div>
+
+</div>
+
+<!-- ══════════ TAB: RATE CALCULATOR ══════════ -->
+<div id="tab-calc" class="page">
+  <div class="g2" style="gap:20px">
+    <div>
+      <div class="sec-hd">Facility Parameters</div>
+      <div class="g2" style="gap:10px">
+        <div class="form-row"><label class="form-label">Base Rate ($)</label><input type="number" id="base_r" value="92.25" step="0.01" oninput="calcRate()"><div style="font-size:10px;color:var(--text3);margin-top:3px">IL FY26: $92.25</div></div>
+        <div class="form-row"><label class="form-label">Wage Factor</label><input type="number" id="wage_f" value="1.06" step="0.001" oninput="calcRate()"><div style="font-size:10px;color:var(--text3);margin-top:3px">HSA 1 Chicago: 1.06</div></div>
+      </div>
+      <div class="form-row"><label class="form-label">CMI — Snapshot Day</label>
+        <div class="slider-wrap"><input type="range" id="cmi_sl" min="1.00" max="2.00" step="0.01" value="1.60" oninput="syncCMI(this.value)"><span class="slider-val" id="cmi_sl_v">1.60</span></div>
+        <input type="number" id="cmi_in" value="1.60" step="0.01" style="margin-top:6px" oninput="syncCMI(this.value)">
+      </div>
+      <div class="sec-hd">STRIVE</div>
+      <div class="g2" style="gap:10px">
+        <div class="form-row"><label class="form-label">Reported hPPD (PBJ)</label><input type="number" id="c_hppd" value="2.80" step="0.01" oninput="calcRate()"></div>
+        <div class="form-row"><label class="form-label">National Avg hPPD</label><input type="number" id="c_nat" value="3.88886" step="0.00001" oninput="calcRate()"></div>
+      </div>
+      <div class="form-row"><label class="form-label">IL Adj Factor</label><input type="number" id="c_adj" value="0.7122" step="0.0001" oninput="calcRate()"></div>
+      <div class="sec-hd">Add-ons</div>
+      <div class="g2" style="gap:10px">
+        <div class="form-row"><label class="form-label">ALZ/Dementia Residents</label><input type="number" id="c_alz" value="0" step="1" oninput="calcRate()"></div>
+        <div class="form-row"><label class="form-label">Total Medicaid Residents</label><input type="number" id="c_tot" value="63" step="1" oninput="calcRate()"></div>
+        <div class="form-row"><label class="form-label">SMI Residents</label><input type="number" id="c_smi" value="0" step="1" oninput="calcRate()"></div>
+        <div class="form-row"><label class="form-label">TBI Residents</label><input type="number" id="c_tbi" value="0" step="1" oninput="calcRate()"></div>
+      </div>
+      <div class="form-row"><label class="form-label">Medicaid Utilization % (≥0.70 for $4.75 add-on)</label><input type="number" id="c_util" value="0.69" step="0.01" max="1" oninput="calcRate()"></div>
+    </div>
+    <div>
+      <div class="sec-hd">Rate Breakdown</div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="g4" style="margin-bottom:14px">
+          <div><div class="metric-label">Nursing Base</div><div class="metric-val" style="color:var(--text);font-size:20px" id="r_base">$0</div></div>
+          <div><div class="metric-label">STRIVE $</div><div class="metric-val" style="font-size:20px" id="r_strive">$0</div></div>
+          <div><div class="metric-label">Total Nursing</div><div class="metric-val" style="color:var(--amber);font-size:20px" id="r_total">$0</div></div>
+          <div><div class="metric-label">STRIVE %</div><div class="metric-val" style="color:var(--purple);font-size:20px" id="r_spct">0%</div></div>
+        </div>
+        <div class="sep"></div>
+        <div class="rrow"><span class="rkey">$92.25 × 1.06 × CMI</span><span class="rval" id="rb1">—</span></div>
+        <div class="rrow"><span class="rkey">ALZ add-on</span><span class="rval" id="rb2">—</span></div>
+        <div class="rrow"><span class="rkey">SMI add-on</span><span class="rval" id="rb3">—</span></div>
+        <div class="rrow"><span class="rkey">TBI add-on</span><span class="rval" id="rb4">—</span></div>
+        <div class="rrow"><span class="rkey">IL Adj Benchmark</span><span class="rval" id="rb5">—</span></div>
+        <div class="rrow"><span class="rkey">STRIVE % → tier</span><span class="rval" id="rb6">—</span></div>
+        <div class="rrow"><span class="rkey">STRIVE Per Diem</span><span class="rval" id="rb7">—</span></div>
+        <div class="rrow"><span class="rkey">Util add-on ($4.75×CMI)</span><span class="rval" id="rb8">—</span></div>
+      </div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-title">STRIVE Tier Position</div>
+        <div id="tier_pos"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">hPPD Needed per Tier</div>
+        <div id="hppd_tiers"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TAB: SCENARIOS ══════════ -->
+<div id="tab-scenario" class="page">
+  <div class="sec-hd">CMI vs STRIVE — Scenario Comparison</div>
+  <div class="g3" style="margin-bottom:16px">
+    <div class="form-row"><label class="form-label">Medicaid Residents</label><input type="number" id="sc_res" value="63" oninput="runScenarios()"></div>
+    <div class="form-row"><label class="form-label">National hPPD</label><input type="number" id="sc_nat" value="3.88886" step="0.00001" oninput="runScenarios()"></div>
+    <div class="form-row"><label class="form-label">IL Adj Factor</label><input type="number" id="sc_adj" value="0.7122" step="0.0001" oninput="runScenarios()"></div>
+  </div>
+  <div id="sc_cards" class="g3" style="gap:12px;margin-bottom:20px"></div>
+  <div class="sec-hd">Break-even Sliders</div>
+  <div class="g2" style="gap:16px">
+    <div class="card">
+      <div class="card-title">CMI Change</div>
+      <div class="form-row"><label class="form-label">Current</label><div class="slider-wrap"><input type="range" id="be_cc" min="1.20" max="1.90" step="0.01" value="1.60" oninput="calcBE()"><span class="slider-val" id="be_cc_v">1.60</span></div></div>
+      <div class="form-row"><label class="form-label">Target</label><div class="slider-wrap"><input type="range" id="be_ct" min="1.20" max="1.90" step="0.01" value="1.65" oninput="calcBE()"><span class="slider-val" id="be_ct_v">1.65</span></div></div>
+      <div class="sep"></div>
+      <div class="rrow"><span class="rkey">Rate change</span><span class="rval" id="be_cr">—</span></div>
+      <div class="rrow"><span class="rkey">Annual (60 res)</span><span class="rval" id="be_ca">—</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">STRIVE Change</div>
+      <div class="form-row"><label class="form-label">Current %</label><div class="slider-wrap"><input type="range" id="be_sc" min="0.70" max="1.25" step="0.01" value="0.86" oninput="calcBE()"><span class="slider-val" id="be_sc_v">0.86</span></div></div>
+      <div class="form-row"><label class="form-label">Target %</label><div class="slider-wrap"><input type="range" id="be_st" min="0.70" max="1.25" step="0.01" value="0.95" oninput="calcBE()"><span class="slider-val" id="be_st_v">0.95</span></div></div>
+      <div class="sep"></div>
+      <div class="rrow"><span class="rkey">STRIVE $ change</span><span class="rval" id="be_sr">—</span></div>
+      <div class="rrow"><span class="rkey">Annual (60 res)</span><span class="rval" id="be_sa">—</span></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="card-title">Summary</div><div id="be_sum"></div></div>
+</div>
+
+<!-- ══════════ TAB: STRIVE TOOL ══════════ -->
+<div id="tab-strive" class="page">
+  <div class="g2" style="gap:20px">
+    <div>
+      <div class="sec-hd">Full STRIVE Tier Table</div>
+      <div class="card"><div id="full_tiers"></div></div>
+    </div>
+    <div>
+      <div class="sec-hd">hPPD Planner</div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">What hPPD Do I Need?</div>
+        <div class="form-row"><label class="form-label">Target STRIVE %</label><input type="number" id="sa_tgt" value="0.95" step="0.01" oninput="calcSA()"></div>
+        <div class="form-row"><label class="form-label">National hPPD</label><input type="number" id="sa_nat" value="3.88886" step="0.00001" oninput="calcSA()"></div>
+        <div class="form-row"><label class="form-label">IL Adj Factor</label><input type="number" id="sa_adj" value="0.7122" step="0.0001" oninput="calcSA()"></div>
+        <div class="sep"></div>
+        <div class="rrow"><span class="rkey">IL Benchmark hPPD</span><span class="rval" id="sa_bench">—</span></div>
+        <div class="rrow"><span class="rkey">Required hPPD</span><span class="rval" style="color:var(--green);font-size:18px" id="sa_req">—</span></div>
+        <div class="rrow"><span class="rkey">Per Diem at tier</span><span class="rval" style="color:var(--accent)" id="sa_dol">—</span></div>
+        <div class="rrow"><span class="rkey">Annual (60 Medicaid res)</span><span class="rval" id="sa_ann">—</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TAB: SP SETUP ══════════ -->
+<div id="tab-setup" class="page">
+
+  <div class="alert alert-info">
+    <strong>What this does:</strong> Connects this tool to your SharePoint list at <strong>aperion.sharepoint.com/sites/RegionalReimbursementTeam</strong> via Microsoft Graph API.
+    Once connected, data entered by your consultants and RVPs syncs automatically — no manual Excel uploads needed.
+  </div>
+
+  <!-- CONNECTION CONFIG -->
+  <div class="sec-hd">Connection Settings</div>
+  <div class="g2" style="gap:16px;margin-bottom:20px">
+    <div class="card">
+      <div class="card-title">Azure App Registration</div>
+      <div class="form-row">
+        <label class="form-label">Client ID (Application ID)</label>
+        <input type="text" id="cfg_client_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" oninput="saveCfg()">
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">From Azure Portal → App Registrations → your app → Overview</div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Tenant ID</label>
+        <input type="text" id="cfg_tenant_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" oninput="saveCfg()">
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">From Azure Portal → Azure Active Directory → Overview</div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">SharePoint Site URL</label>
+        <input type="text" id="cfg_site_url" value="https://aperion.sharepoint.com/sites/RegionalReimbursementTeam" oninput="saveCfg()">
+      </div>
+      <div class="form-row">
+        <label class="form-label">List Name (exact, as created below)</label>
+        <input type="text" id="cfg_list_name" value="SNF_Weekly_Tracker" oninput="saveCfg()">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-primary" onclick="connectSP()">🔗 Connect &amp; Sign In</button>
+        <button class="btn btn-secondary" onclick="testSP()">Test Connection</button>
+        <button class="btn btn-danger btn-sm" onclick="disconnectSP()">Disconnect</button>
+      </div>
+      <div id="conn_status" style="margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--text2)"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Connection Status</div>
+      <div class="rrow"><span class="rkey">SharePoint site</span><span class="rval" id="cs_site">—</span></div>
+      <div class="rrow"><span class="rkey">List</span><span class="rval" id="cs_list">—</span></div>
+      <div class="rrow"><span class="rkey">Signed-in user</span><span class="rval" id="cs_user">—</span></div>
+      <div class="rrow"><span class="rkey">Last sync</span><span class="rval" id="cs_sync">—</span></div>
+      <div class="rrow"><span class="rkey">Records in SP</span><span class="rval" id="cs_count">—</span></div>
+      <div class="sep"></div>
+      <div class="rrow"><span class="rkey">Auto-sync on data entry</span>
+        <span class="rval"><label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="auto_sync" onchange="saveCfg()"> <span style="font-size:12px">Enabled</span>
+        </label></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP-BY-STEP SETUP GUIDE -->
+  <div class="sec-hd">Step-by-Step Setup Guide</div>
+
+  <div class="wizard-step">
+    <div class="step-num">Step 1 of 5</div>
+    <div class="step-title">Register an App in Azure Active Directory</div>
+    <div class="step-body">
+      This creates the "identity" that lets the tool talk to your SharePoint. You only do this once.
+      <ol style="margin:10px 0 0 20px;line-height:2">
+        <li>Go to <strong>portal.azure.com</strong> and sign in with your Microsoft 365 admin account</li>
+        <li>Search for <strong>"App registrations"</strong> and click <strong>+ New registration</strong></li>
+        <li>Name it: <span class="inline-code">IL SNF Rate Optimizer</span></li>
+        <li>Supported account types: <strong>"Accounts in this organizational directory only"</strong></li>
+        <li>Redirect URI: Select <strong>Single-page application (SPA)</strong> and enter:
+          <div class="code-block">https://aperion.sharepoint.com/sites/RegionalReimbursementTeam/SiteAssets/snf-optimizer.html</div>
+          (Also add <span class="inline-code">http://localhost</span> for local testing)
+        </li>
+        <li>Click <strong>Register</strong></li>
+        <li>Copy the <strong>Application (client) ID</strong> and <strong>Directory (tenant) ID</strong> — paste them in the Connection Settings above</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="wizard-step">
+    <div class="step-num">Step 2 of 5</div>
+    <div class="step-title">Grant API Permissions</div>
+    <div class="step-body">
+      <ol style="margin:10px 0 0 20px;line-height:2">
+        <li>In your new app registration, click <strong>API permissions</strong> → <strong>+ Add a permission</strong></li>
+        <li>Choose <strong>Microsoft Graph</strong> → <strong>Delegated permissions</strong></li>
+        <li>Search and add these permissions:
+          <div class="code-block">Sites.ReadWrite.All
+User.Read</div>
+        </li>
+        <li>Click <strong>Grant admin consent for Aperion</strong> (requires admin privileges)</li>
+        <li>Both permissions should show a green ✓ "Granted"</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="wizard-step">
+    <div class="step-num">Step 3 of 5</div>
+    <div class="step-title">Create the SharePoint List</div>
+    <div class="step-body">
+      Create a list called <span class="inline-code">SNF_Weekly_Tracker</span> at your SharePoint site:
+      <ol style="margin:10px 0 0 20px;line-height:2">
+        <li>Go to <strong>aperion.sharepoint.com/sites/RegionalReimbursementTeam</strong></li>
+        <li>Click <strong>+ New</strong> → <strong>List</strong> → <strong>Blank list</strong></li>
+        <li>Name it exactly: <span class="inline-code">SNF_Weekly_Tracker</span></li>
+        <li>Add these columns (click <strong>+ Add column</strong> for each):
+          <div class="code-block">WeekEnd         → Date (Date only)
+FacilityName    → Single line of text
+CMIGoal         → Number (2 decimal places)
+MedAGoal        → Number (0 decimal places)
+StriveCMIGoal   → Number (2 decimal places)
+CMI             → Number (2 decimal places)
+MedARate        → Number (0 decimal places)
+hPPD            → Number (2 decimal places)
+StrivePct       → Number (2 decimal places)
+StriveDollar    → Number (2 decimal places)
+Bottom4         → Number (0 decimal places)
+RatePeriod      → Single line of text
+Notes           → Multiple lines of text</div>
+        </li>
+        <li>The default <strong>Title</strong> column can be kept — it will store a unique key (FacilityName + WeekEnd)</li>
+      </ol>
+      <div class="alert alert-warn" style="margin-top:12px">
+        <strong>Column names must match exactly</strong> (case-sensitive). The tool uses these names to read and write data.
+      </div>
+    </div>
+  </div>
+
+  <div class="wizard-step">
+    <div class="step-num">Step 4 of 5</div>
+    <div class="step-title">Upload This File to SharePoint</div>
+    <div class="step-body">
+      <ol style="margin:10px 0 0 20px;line-height:2">
+        <li>In your SharePoint site, go to <strong>Site Contents</strong> → <strong>Site Assets</strong> library</li>
+        <li>Upload <span class="inline-code">il_snf_optimizer_sp.html</span> to Site Assets</li>
+        <li>The file will be accessible at:
+          <div class="code-block">https://aperion.sharepoint.com/sites/RegionalReimbursementTeam/SiteAssets/il_snf_optimizer_sp.html</div>
+        </li>
+        <li>To embed it on a SharePoint page:
+          <ul style="margin:6px 0 0 20px;line-height:2">
+            <li>Edit any SharePoint page → <strong>+</strong> → search <strong>"Embed"</strong></li>
+            <li>Paste the URL above into the embed URL field</li>
+            <li>The tool renders inline with full functionality</li>
+          </ul>
+        </li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="wizard-step">
+    <div class="step-num">Step 5 of 5</div>
+    <div class="step-title">Connect and Test</div>
+    <div class="step-body">
+      <ol style="margin:10px 0 0 20px;line-height:2">
+        <li>Fill in the <strong>Client ID</strong> and <strong>Tenant ID</strong> in Connection Settings above</li>
+        <li>Click <strong>Connect &amp; Sign In</strong> — a Microsoft login window will appear</li>
+        <li>Sign in with your Aperion Microsoft 365 credentials</li>
+        <li>Click <strong>Test Connection</strong> to verify the list is reachable</li>
+        <li>Click <strong>↑ Sync to SP</strong> in the status bar to push your local data up</li>
+        <li>Share the SharePoint page URL with your consultants and RVPs — they sign in with their own credentials and can enter data for their facilities</li>
+      </ol>
+      <div class="alert alert-ok" style="margin-top:12px">
+        <strong>Once connected:</strong> Every time someone edits a cell in the Weekly Tracker, the change auto-saves to the SharePoint list if <strong>Auto-sync</strong> is checked above. Your whole team always sees current data.
+      </div>
+    </div>
+  </div>
+
+  <div class="wizard-step">
+    <div class="step-num">Optional: Power BI Dashboard</div>
+    <div class="step-title">Build a Live Dashboard from Your SharePoint List</div>
+    <div class="step-body">
+      Once data is in the <span class="inline-code">SNF_Weekly_Tracker</span> list, you can connect Power BI directly:
+      <ol style="margin:10px 0 0 20px;line-height:2">
+        <li>Open Power BI Desktop → <strong>Get Data</strong> → <strong>SharePoint Online List</strong></li>
+        <li>Enter site URL: <span class="inline-code">https://aperion.sharepoint.com/sites/RegionalReimbursementTeam</span></li>
+        <li>Select <span class="inline-code">SNF_Weekly_Tracker</span> list</li>
+        <li>Build visuals for CMI trend by facility, STRIVE % over time, Med A rate heat map</li>
+        <li>Publish to Power BI Service and embed on the same SharePoint page next to the tracker</li>
+      </ol>
+    </div>
+  </div>
+
+</div><!-- /tab-setup -->
+
+</div><!-- /main -->
+
+<!-- XLSX library for export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- MSAL for Microsoft auth -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-authentication-library-for-js/2.38.3/msal-browser.min.js"></script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════════════════════
+const STRIVE_TIERS=[
+  {p:.70,d:9.00},{p:.71,d:9.50},{p:.72,d:10.50},{p:.73,d:10.50},{p:.74,d:10.50},
+  {p:.75,d:12.76},{p:.76,d:12.76},{p:.77,d:12.76},{p:.78,d:15.02},{p:.79,d:15.02},
+  {p:.80,d:17.29},{p:.81,d:17.29},{p:.82,d:17.29},{p:.83,d:17.29},{p:.84,d:17.29},
+  {p:.85,d:20.37},{p:.86,d:20.37},{p:.87,d:21.92},{p:.88,d:22.69},{p:.89,d:22.69},
+  {p:.90,d:24.23},{p:.91,d:25.00},{p:.92,d:25.00},{p:.93,d:25.00},{p:.94,d:25.00},
+  {p:.95,d:27.72},{p:.96,d:27.72},{p:.97,d:27.72},{p:.98,d:27.72},{p:.99,d:27.72},
+  {p:1.00,d:31.21},{p:1.01,d:31.21},{p:1.02,d:31.21},{p:1.03,d:31.21},{p:1.04,d:31.21},
+  {p:1.05,d:34.71},{p:1.06,d:34.71},{p:1.07,d:34.71},{p:1.08,d:34.71},{p:1.09,d:34.71},
+  {p:1.10,d:36.20},{p:1.11,d:36.20},{p:1.12,d:36.20},{p:1.13,d:36.20},{p:1.14,d:36.20},
+  {p:1.15,d:37.19},{p:1.16,d:37.34},{p:1.17,d:37.49},{p:1.18,d:37.63},{p:1.19,d:37.78},
+  {p:1.20,d:37.93},{p:1.21,d:38.08},{p:1.22,d:38.23},{p:1.23,d:38.38},{p:1.24,d:38.53},
+  {p:1.25,d:38.68}
+];
+const KEY_TIERS=[.70,.75,.80,.85,.86,.87,.88,.90,.91,.95,1.00,1.05,1.10,1.15,1.20,1.25];
+const SC_DEFS=[
+  {n:'CMI 1.60 + STRIVE 0.95',cmi:1.60,s:.95,desc:'Hold CMI at goal, push hPPD'},
+  {n:'CMI 1.70 + STRIVE 0.86',cmi:1.70,s:.86,desc:'Max CMI, hold STRIVE'},
+  {n:'CMI 1.65 + STRIVE 0.90',cmi:1.65,s:.90,desc:'Balanced both levers'},
+  {n:'CMI 1.55 + STRIVE 1.00',cmi:1.55,s:1.00,desc:'Lower CMI, push staffing'},
+  {n:'CMI 1.42 + STRIVE 1.25',cmi:1.42,s:1.25,desc:'Wesley model – max STRIVE'},
+  {n:'CMI 1.60 + STRIVE 0.86',cmi:1.60,s:.86,desc:'Status quo'},
+];
+const DEFAULT_FACS=[
+  {name:'Niles',        cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.56},
+  {name:'Elgin',        cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.46},
+  {name:'Fox River',    cmi_goal:1.65,meda_goal:750,strive_cmi_goal:1.66},
+  {name:'Forest Park',  cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.56},
+  {name:'Westchester',  cmi_goal:1.65,meda_goal:750,strive_cmi_goal:1.60},
+  {name:'Burbank',      cmi_goal:1.65,meda_goal:750,strive_cmi_goal:1.60},
+  {name:'International',cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.60},
+  {name:'Lakeshore',    cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.55},
+  {name:'Dekalb',       cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.70},
+  {name:'Oak Lawn',     cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.55},
+  {name:'Chicago Hts',  cmi_goal:1.45,meda_goal:730,strive_cmi_goal:0},
+  {name:'Dolton',       cmi_goal:1.60,meda_goal:730,strive_cmi_goal:1.55},
+  {name:'Midlothian',   cmi_goal:1.55,meda_goal:730,strive_cmi_goal:1.50},
+  {name:'Parkridge',    cmi_goal:1.20,meda_goal:730,strive_cmi_goal:1.18},
+  {name:'West Chicago', cmi_goal:1.40,meda_goal:730,strive_cmi_goal:0},
+  {name:'Wilmington',   cmi_goal:1.40,meda_goal:730,strive_cmi_goal:0},
+  {name:'Alta Fairmont',cmi_goal:1.55,meda_goal:750,strive_cmi_goal:1.40},
+  {name:'Alta Oakbrook',cmi_goal:1.50,meda_goal:750,strive_cmi_goal:1.60},
+  {name:'Alta Waconda', cmi_goal:1.60,meda_goal:730,strive_cmi_goal:1.53},
+  {name:'Wesley',       cmi_goal:1.50,meda_goal:750,strive_cmi_goal:1.40},
+];
+const SEED={
+  'Niles':[{cmi:1.68,meda:796,hppd:2.81},{cmi:1.67,meda:840,hppd:2.80},{cmi:1.69,meda:890,hppd:2.80}],
+  'Elgin':[{cmi:1.45,meda:624,hppd:2.50},{cmi:1.56,meda:644,hppd:2.69},{cmi:1.58,meda:655,hppd:2.69}],
+  'Fox River':[{cmi:1.53,meda:767,hppd:3.16},{cmi:1.72,meda:765,hppd:3.16},{cmi:1.73,meda:754,hppd:3.16}],
+  'Forest Park':[{cmi:1.60,meda:706,hppd:3.18},{cmi:1.61,meda:749,hppd:3.18},{cmi:1.62,meda:744,hppd:3.18}],
+  'Westchester':[{cmi:1.52,meda:849,hppd:2.91},{cmi:1.72,meda:851,hppd:2.91},{cmi:1.72,meda:814,hppd:2.91}],
+  'Burbank':[{cmi:1.69,meda:736,hppd:3.49},{cmi:1.70,meda:765,hppd:3.49},{cmi:1.72,meda:765,hppd:3.49}],
+  'International':[{cmi:1.51,meda:714,hppd:2.93},{cmi:1.57,meda:771,hppd:2.93},{cmi:1.55,meda:697,hppd:2.93}],
+  'Lakeshore':[{cmi:1.54,meda:707,hppd:2.55},{cmi:1.57,meda:696,hppd:2.55},{cmi:1.57,meda:721,hppd:2.55}],
+  'Dekalb':[{cmi:1.62,meda:699,hppd:3.07},{cmi:1.59,meda:702,hppd:3.07},{cmi:1.52,meda:656,hppd:3.07}],
+  'Oak Lawn':[{cmi:1.53,meda:711,hppd:3.14},{cmi:1.56,meda:737,hppd:3.14},{cmi:1.57,meda:673,hppd:3.14}],
+  'Chicago Hts':[{cmi:1.44,meda:777,hppd:2.03},{cmi:1.43,meda:768,hppd:2.03},{cmi:1.44,meda:764,hppd:2.03}],
+  'Dolton':[{cmi:1.60,meda:687,hppd:3.33},{cmi:1.57,meda:591,hppd:3.33},{cmi:1.58,meda:627,hppd:3.33}],
+  'Midlothian':[{cmi:1.38,meda:698,hppd:2.93},{cmi:1.40,meda:698,hppd:2.93},{cmi:1.39,meda:714,hppd:2.93}],
+  'Parkridge':[{cmi:1.10,meda:687,hppd:2.61},{cmi:1.12,meda:642,hppd:2.61},{cmi:1.16,meda:637,hppd:2.61}],
+  'West Chicago':[{cmi:1.44,meda:749,hppd:1.69},{cmi:1.45,meda:709,hppd:1.69},{cmi:1.44,meda:707,hppd:1.69}],
+  'Wilmington':[{cmi:1.31,meda:557,hppd:2.18},{cmi:1.31,meda:0,hppd:2.18},{cmi:1.28,meda:0,hppd:2.18}],
+  'Alta Fairmont':[{cmi:1.57,meda:735,hppd:3.71},{cmi:1.56,meda:794,hppd:3.71},{cmi:1.56,meda:793,hppd:3.71}],
+  'Alta Oakbrook':[{cmi:1.38,meda:738,hppd:4.47},{cmi:1.45,meda:770,hppd:4.47},{cmi:1.39,meda:796,hppd:4.47}],
+  'Alta Waconda':[{cmi:1.59,meda:761,hppd:3.67},{cmi:1.56,meda:818,hppd:3.67},{cmi:1.56,meda:817,hppd:3.67}],
+  'Wesley':[{cmi:1.45,meda:749,hppd:3.71},{cmi:1.45,meda:761,hppd:3.71},{cmi:1.38,meda:731,hppd:3.71}],
+};
+
+// ════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════
+let WT_FACS=[];
+let WT_WEEKS=['2026-01-02','2026-01-09','2026-01-16'];
+let msalInstance=null;
+let spAccessToken=null;
+let spConnected=false;
+let spUser='';
+
+// ════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════
+function getSD(pct){
+  if(pct<.70) return 0;if(pct>=1.25) return 38.68;
+  const f=Math.floor(pct*100)/100;
+  const t=STRIVE_TIERS.find(x=>Math.abs(x.p-f)<.005);
+  if(t) return t.d;
+  const lo=[...STRIVE_TIERS].reverse().find(x=>x.p<=f);
+  return lo?lo.d:0;
+}
+const f$=n=>'$'+n.toFixed(2);
+const fp=n=>(n*100).toFixed(1)+'%';
+const fp2=n=>(n*100).toFixed(2)+'%';
+const nb=(cmi,b=92.25,w=1.06)=>b*w*cmi;
+const spct=(hppd,nat,adj=.7122)=>hppd/(nat*adj);
+const clr=v=>v>0?'pos':v<0?'neg':'muted';
+const ts=()=>new Date().toLocaleTimeString();
+
+// ════════════════════════════════════════════════════
+// LOCAL STORAGE — PERSIST DATA BETWEEN SESSIONS
+// ════════════════════════════════════════════════════
+const LS_KEY='aperion_snf_tracker_v2';
+function saveLocal(){
+  const d={facs:WT_FACS,weeks:WT_WEEKS,saved:new Date().toISOString()};
+  localStorage.setItem(LS_KEY,JSON.stringify(d));
+  setStatus('Saved locally at '+ts(),'amber');
+}
+function loadLocal(){
+  try{
+    const raw=localStorage.getItem(LS_KEY);
+    if(!raw) return false;
+    const d=JSON.parse(raw);
+    WT_FACS=d.facs||[];WT_WEEKS=d.weeks||[];
+    console.log('Loaded from localStorage');
+    return true;
+  }catch(e){return false}
+}
+function loadCfgLocal(){
+  try{
+    const c=JSON.parse(localStorage.getItem('aperion_sp_cfg')||'{}');
+    if(c.client_id) document.getElementById('cfg_client_id').value=c.client_id;
+    if(c.tenant_id) document.getElementById('cfg_tenant_id').value=c.tenant_id;
+    if(c.site_url)  document.getElementById('cfg_site_url').value=c.site_url;
+    if(c.list_name) document.getElementById('cfg_list_name').value=c.list_name;
+    if(c.auto_sync) document.getElementById('auto_sync').checked=c.auto_sync;
+  }catch(e){}
+}
+function saveCfg(){
+  const c={
+    client_id:document.getElementById('cfg_client_id').value,
+    tenant_id:document.getElementById('cfg_tenant_id').value,
+    site_url:document.getElementById('cfg_site_url').value,
+    list_name:document.getElementById('cfg_list_name').value,
+    auto_sync:document.getElementById('auto_sync').checked
+  };
+  localStorage.setItem('aperion_sp_cfg',JSON.stringify(c));
+}
+
+// ════════════════════════════════════════════════════
+// STATUS BAR
+// ════════════════════════════════════════════════════
+function setStatus(msg,state='gray'){
+  document.getElementById('sp_status').textContent=msg;
+  const dot=document.getElementById('sp_dot');
+  dot.className='status-dot sd-'+state;
+  document.getElementById('last_sync').textContent=ts();
+}
+
+// ════════════════════════════════════════════════════
+// MICROSOFT AUTHENTICATION (MSAL)
+// ════════════════════════════════════════════════════
+function getMSALConfig(){
+  const clientId=document.getElementById('cfg_client_id').value.trim();
+  const tenantId=document.getElementById('cfg_tenant_id').value.trim();
+  if(!clientId||!tenantId) return null;
+  return{
+    auth:{
+      clientId,
+      authority:`https://login.microsoftonline.com/${tenantId}`,
+      redirectUri:window.location.href.split('?')[0],
+    },
+    cache:{cacheLocation:'localStorage',storeAuthStateInCookie:false}
+  };
+}
+
+const SP_SCOPES=['https://graph.microsoft.com/Sites.ReadWrite.All','User.Read'];
+
+async function connectSP(){
+  const cfg=getMSALConfig();
+  if(!cfg){
+    document.getElementById('conn_status').textContent='⚠ Enter Client ID and Tenant ID first.';
+    return;
+  }
+  try{
+    msalInstance=new msal.PublicClientApplication(cfg);
+    await msalInstance.initialize();
+    let resp;
+    try{
+      resp=await msalInstance.acquireTokenSilent({scopes:SP_SCOPES,account:msalInstance.getAllAccounts()[0]});
+    }catch(e){
+      resp=await msalInstance.loginPopup({scopes:SP_SCOPES});
+    }
+    spAccessToken=resp.accessToken;
+    spUser=resp.account?.name||resp.account?.username||'Unknown';
+    spConnected=true;
+    setStatus('Connected as '+spUser,'green');
+    document.getElementById('cs_user').textContent=spUser;
+    document.getElementById('cs_site').textContent=document.getElementById('cfg_site_url').value;
+    document.getElementById('cs_list').textContent=document.getElementById('cfg_list_name').value;
+    document.getElementById('sync_btn').disabled=false;
+    document.getElementById('load_btn').disabled=false;
+    document.getElementById('conn_status').innerHTML='<span style="color:var(--green)">✓ Connected as '+spUser+'</span>';
+    document.getElementById('sp_hint').innerHTML=' Data syncs automatically to SharePoint. Team members see updates in real time.';
+  }catch(e){
+    document.getElementById('conn_status').innerHTML='<span style="color:var(--red)">✗ Auth failed: '+e.message+'</span>';
+    setStatus('Authentication failed','red');
+    console.error(e);
+  }
+}
+
+async function getToken(){
+  if(!msalInstance) return null;
+  try{
+    const r=await msalInstance.acquireTokenSilent({scopes:SP_SCOPES,account:msalInstance.getAllAccounts()[0]});
+    return r.accessToken;
+  }catch(e){
+    const r=await msalInstance.acquireTokenPopup({scopes:SP_SCOPES});
+    return r.accessToken;
+  }
+}
+
+async function testSP(){
+  if(!spConnected){document.getElementById('conn_status').innerHTML='<span style="color:var(--amber)">Not connected. Click Connect first.</span>';return;}
+  const token=await getToken();
+  const siteUrl=document.getElementById('cfg_site_url').value;
+  const listName=document.getElementById('cfg_list_name').value;
+  const hostname=new URL(siteUrl).hostname;
+  const sitePath=new URL(siteUrl).pathname;
+  try{
+    const r=await fetch(`https://graph.microsoft.com/v1.0/sites/${hostname}:${sitePath}:/lists/${listName}/items?$top=1`,{
+      headers:{Authorization:'Bearer '+token,'Accept':'application/json'}
+    });
+    if(r.ok){
+      const d=await r.json();
+      document.getElementById('cs_count').textContent=(d['@odata.count']||d.value?.length||'?')+' items';
+      document.getElementById('conn_status').innerHTML='<span style="color:var(--green)">✓ List found and accessible</span>';
+    }else{
+      const e=await r.json();
+      document.getElementById('conn_status').innerHTML=`<span style="color:var(--red)">✗ List error: ${e.error?.message||r.status}</span>`;
+    }
+  }catch(e){document.getElementById('conn_status').innerHTML=`<span style="color:var(--red)">✗ ${e.message}</span>`}
+}
+
+function disconnectSP(){
+  msalInstance=null;spAccessToken=null;spConnected=false;spUser='';
+  document.getElementById('sync_btn').disabled=true;
+  document.getElementById('load_btn').disabled=true;
+  setStatus('Disconnected — running in local mode','gray');
+  document.getElementById('cs_user').textContent='—';
+  document.getElementById('conn_status').textContent='Disconnected.';
+}
+
+// ════════════════════════════════════════════════════
+// SHAREPOINT GRAPH API — SYNC
+// ════════════════════════════════════════════════════
+async function syncToSharePoint(){
+  if(!spConnected){alert('Not connected. Go to ⚙ SP Setup to connect.');return;}
+  const btn=document.getElementById('sync_btn');
+  btn.innerHTML='<span class="sync-spin">⟳</span> Syncing...';btn.disabled=true;
+  setStatus('Syncing to SharePoint...','amber');
+  try{
+    const token=await getToken();
+    const siteUrl=document.getElementById('cfg_site_url').value;
+    const listName=document.getElementById('cfg_list_name').value;
+    const hostname=new URL(siteUrl).hostname;
+    const sitePath=new URL(siteUrl).pathname;
+    const nat=parseFloat(document.getElementById('wt_nat').value)||3.88886;
+    const adj=parseFloat(document.getElementById('wt_adj').value)||.7122;
+    const period=document.getElementById('wt_period').value;
+    let ok=0,err=0;
+
+    for(const f of WT_FACS){
+      for(let wi=0;wi<f.weeks.length;wi++){
+        const w=f.weeks[wi];
+        const hv=parseFloat(w.hppd)||0;
+        const sp=hv>0?spct(hv,nat,adj):0;
+        const sd=getSD(sp);
+        const key=`${f.name}::${WT_WEEKS[wi]}`;
+        const fields={
+          Title:key,
+          WeekEnd:WT_WEEKS[wi],
+          FacilityName:f.name,
+          CMIGoal:f.cmi_goal,
+          MedAGoal:f.meda_goal,
+          StriveCMIGoal:f.strive_cmi_goal||0,
+          CMI:parseFloat(w.cmi)||0,
+          MedARate:parseFloat(w.meda)||0,
+          hPPD:parseFloat(w.hppd)||0,
+          StrivePct:parseFloat((sp*100).toFixed(2)),
+          StriveDollar:parseFloat(sd.toFixed(2)),
+          Bottom4:parseFloat(w.bottom4)||0,
+          RatePeriod:period,
+          Notes:w.notes||''
+        };
+        // Upsert: try to find existing item by Title, then PATCH or POST
+        try{
+          const findR=await fetch(
+            `https://graph.microsoft.com/v1.0/sites/${hostname}:${sitePath}:/lists/${listName}/items?$filter=fields/Title eq '${encodeURIComponent(key)}'&$select=id`,
+            {headers:{Authorization:'Bearer '+token,'Accept':'application/json'}}
+          );
+          const found=await findR.json();
+          if(found.value&&found.value.length>0){
+            // PATCH existing
+            await fetch(
+              `https://graph.microsoft.com/v1.0/sites/${hostname}:${sitePath}:/lists/${listName}/items/${found.value[0].id}/fields`,
+              {method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(fields)}
+            );
+          }else{
+            // POST new
+            await fetch(
+              `https://graph.microsoft.com/v1.0/sites/${hostname}:${sitePath}:/lists/${listName}/items`,
+              {method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({fields})}
+            );
+          }
+          ok++;
+        }catch(e){err++;console.warn('Item sync error',key,e)}
+      }
+    }
+    document.getElementById('cs_sync').textContent=ts();
+    setStatus(`Synced ${ok} records to SharePoint${err?' ('+err+' errors)':''}`,err?'amber':'green');
+    saveLocal();
+  }catch(e){
+    setStatus('Sync failed: '+e.message,'red');
+    console.error(e);
+  }
+  btn.innerHTML='↑ Sync to SP';btn.disabled=false;
+}
+
+async function loadFromSharePoint(){
+  if(!spConnected){alert('Not connected. Go to ⚙ SP Setup to connect.');return;}
+  const btn=document.getElementById('load_btn');
+  btn.innerHTML='<span class="sync-spin">⟳</span> Loading...';btn.disabled=true;
+  setStatus('Loading from SharePoint...','amber');
+  try{
+    const token=await getToken();
+    const siteUrl=document.getElementById('cfg_site_url').value;
+    const listName=document.getElementById('cfg_list_name').value;
+    const hostname=new URL(siteUrl).hostname;
+    const sitePath=new URL(siteUrl).pathname;
+    const r=await fetch(
+      `https://graph.microsoft.com/v1.0/sites/${hostname}:${sitePath}:/lists/${listName}/items?expand=fields&$top=5000`,
+      {headers:{Authorization:'Bearer '+token,'Accept':'application/json'}}
+    );
+    if(!r.ok){const e=await r.json();throw new Error(e.error?.message||r.status)}
+    const data=await r.json();
+    const items=data.value||[];
+    // Rebuild WT_FACS and WT_WEEKS from SP data
+    const weekSet=new Set();const facMap={};
+    items.forEach(item=>{
+      const f=item.fields;
+      if(!f.FacilityName||!f.WeekEnd) return;
+      weekSet.add(f.WeekEnd.split('T')[0]);
+      if(!facMap[f.FacilityName]){
+        const def=DEFAULT_FACS.find(d=>d.name===f.FacilityName)||{name:f.FacilityName,cmi_goal:f.CMIGoal||1.60,meda_goal:f.MedAGoal||750,strive_cmi_goal:f.StriveCMIGoal||0};
+        facMap[f.FacilityName]={...def,weeks:{}};
+      }
+      const wd=f.WeekEnd.split('T')[0];
+      facMap[f.FacilityName].weeks[wd]={cmi:f.CMI||'',meda:f.MedARate||'',hppd:f.hPPD||'',bottom4:f.Bottom4||0,notes:f.Notes||''};
+    });
+    const sortedWeeks=[...weekSet].sort();
+    WT_WEEKS=sortedWeeks;
+    WT_FACS=Object.values(facMap).map(f=>({
+      ...f,
+      weeks:WT_WEEKS.map(w=>f.weeks[w]||{cmi:'',meda:'',hppd:'',bottom4:0,notes:''})
+    }));
+    document.getElementById('cs_count').textContent=items.length+' items';
+    document.getElementById('cs_sync').textContent=ts();
+    saveLocal();
+    renderWT();
+    setStatus('Loaded '+items.length+' records from SharePoint','green');
+  }catch(e){
+    setStatus('Load failed: '+e.message,'red');
+    console.error(e);
+  }
+  btn.innerHTML='↓ Load from SP';btn.disabled=false;
+}
+
+// Auto-sync trigger (called after cell edits if enabled)
+function maybeSyncSP(){
+  if(spConnected&&document.getElementById('auto_sync').checked){
+    syncToSharePoint();
+  }else{
+    saveLocal();
+  }
+}
+
+// ════════════════════════════════════════════════════
+// WEEKLY TRACKER
+// ════════════════════════════════════════════════════
+function loadDefaultFacs(){
+  WT_WEEKS=['2026-01-02','2026-01-09','2026-01-16'];
+  WT_FACS=DEFAULT_FACS.map(f=>{
+    const seed=SEED[f.name]||[];
+    return{...f,weeks:WT_WEEKS.map((_,i)=>({
+      cmi:seed[i]?seed[i].cmi:'',meda:seed[i]?seed[i].meda:'',hppd:seed[i]?seed[i].hppd:'',bottom4:0,notes:''
+    }))};
+  });
+  renderWT();
+}
+
+function addWeek(){
+  if(!WT_FACS.length){loadDefaultFacs();return}
+  const last=WT_WEEKS.length?new Date(WT_WEEKS[WT_WEEKS.length-1]):new Date('2026-01-16');
+  last.setDate(last.getDate()+7);
+  const nd=last.toISOString().split('T')[0];
+  WT_WEEKS.push(nd);
+  WT_FACS.forEach(f=>f.weeks.push({cmi:'',meda:'',hppd:'',bottom4:0,notes:''}));
+  renderWT();
+}
+
+function removeLastWeek(){
+  if(WT_WEEKS.length<=1) return;
+  WT_WEEKS.pop();WT_FACS.forEach(f=>f.weeks.pop());
+  renderWT();
+}
+
+function wtSet(fi,wi,field,val){
+  WT_FACS[fi].weeks[wi][field]=val;
+  // update just the summary cells for this row without full re-render
+  const nat=parseFloat(document.getElementById('wt_nat').value)||3.88886;
+  const adj_v=parseFloat(document.getElementById('wt_adj').value)||.7122;
+  const f=WT_FACS[fi];
+  const hppdVals=f.weeks.map(w=>parseFloat(w.hppd)||0).filter(v=>v>0);
+  const avgH=hppdVals.length?hppdVals.reduce((a,b)=>a+b)/hppdVals.length:0;
+  const sp=avgH>0?spct(avgH,nat,adj_v):0;
+  const sd=getSD(sp);
+  const avgEl=document.getElementById(`avg_${fi}`);
+  const pctEl=document.getElementById(`spct_${fi}`);
+  const dolEl=document.getElementById(`sdol_${fi}`);
+  if(avgEl) avgEl.textContent=avgH>0?avgH.toFixed(2):'—';
+  if(pctEl){pctEl.textContent=avgH>0?fp(sp):'—';pctEl.className=sp>=.95?'pos':sp>=.85?'warn':'neg';}
+  if(dolEl) dolEl.textContent=avgH>0?f$(sd):'—';
+  // Color the CMI cell
+  const cmiEl=document.getElementById(`cmi_${fi}_${wi}`);
+  if(cmiEl&&field==='cmi'){
+    const v=parseFloat(val)||0;
+    cmiEl.style.color=v>0?(v>=f.cmi_goal?'var(--green)':'var(--red)'):'var(--text3)';
+  }
+  const medaEl=document.getElementById(`meda_${fi}_${wi}`);
+  if(medaEl&&field==='meda'){
+    const v=parseFloat(val)||0;
+    medaEl.style.color=v>0?(v>=f.meda_goal?'var(--green)':'var(--red)'):'var(--text3)';
+  }
+  // debounce save
+  clearTimeout(window._saveTimer);
+  window._saveTimer=setTimeout(()=>maybeSyncSP(),2000);
+}
+
+function renderWT(){
+  if(!WT_FACS.length){document.getElementById('wt_container').innerHTML='<div class="alert alert-info">Click <strong>↺ Reset Facilities</strong> to load Aperion facilities, or add facilities manually.</div>';return;}
+  const snap=parseInt(document.getElementById('snap_wk').value)||13;
+  const nat=parseFloat(document.getElementById('wt_nat').value)||3.88886;
+  const adj_v=parseFloat(document.getElementById('wt_adj').value)||.7122;
+  document.getElementById('snap_wk_lbl').textContent=snap;
+
+  // Build header
+  let th=`<tr>
+    <th class="fac-sticky" style="min-width:138px;position:sticky;left:0;z-index:6;background:var(--surface)">Facility</th>
+    <th style="text-align:center;font-size:9px">CMI<br>Goal</th>
+    <th style="text-align:center;font-size:9px">Med A<br>Goal</th>
+    <th style="text-align:center;font-size:9px">STRIVE<br>CMI Goal</th>`;
+  WT_WEEKS.forEach((d,i)=>{
+    const wn=i+1;const isSnap=wn===snap;
+    const shortDate=d.replace(/^\d{4}-/,'');
+    th+=`<th colspan="4" class="${isSnap?'wk-snap':''}" style="text-align:center;border-left:1px solid var(--border2)">
+      <div style="font-size:10px;font-weight:600;color:${isSnap?'var(--amber)':'var(--accent)'}">WK ${wn}${isSnap?' ▲':''}</div>
+      <div class="week-date" style="font-size:9px;color:var(--text2)">${shortDate}</div>
+    </th>`;
+  });
+  th+=`<th style="text-align:center;color:var(--green);white-space:nowrap">Qtr<br>hPPD</th>
+    <th style="text-align:center;color:var(--purple)">STRIVE<br>%</th>
+    <th style="text-align:center;color:var(--accent)">STRIVE<br>$/day</th></tr>`;
+
+  // Sub-header
+  th+=`<tr><th class="fac-sticky" style="position:sticky;left:0;z-index:6;background:var(--surface2)"></th><th></th><th></th><th></th>`;
+  WT_WEEKS.forEach((_,i)=>{
+    const isSnap=(i+1)===snap;
+    const bc=isSnap?'background:rgba(255,176,32,.08)':'';
+    const bl=isSnap?'border-left:2px solid var(--amber2)':'border-left:1px solid var(--border2)';
+    th+=`<th style="text-align:center;font-size:9px;color:var(--text2);${bc};${bl}">CMI</th>
+      <th style="text-align:center;font-size:9px;color:var(--text2);${bc}">Med A</th>
+      <th style="text-align:center;font-size:9px;color:var(--purple);${bc}">hPPD</th>
+      <th style="text-align:center;font-size:9px;color:var(--text3);${bc}">Bot 4</th>`;
+  });
+  th+=`<th></th><th></th><th></th></tr>`;
+
+  // Rows
+  let rows='';
+  WT_FACS.forEach((f,fi)=>{
+    const hppdVals=f.weeks.map(w=>parseFloat(w.hppd)||0).filter(v=>v>0);
+    const avgH=hppdVals.length?hppdVals.reduce((a,b)=>a+b)/hppdVals.length:0;
+    const qsp=avgH>0?spct(avgH,nat,adj_v):0;
+    const qsd=getSD(qsp);
+    const spctCls=qsp>=.95?'pos':qsp>=.85?'warn':'neg';
+
+    rows+=`<tr><td class="fac-sticky">${f.name}</td>
+      <td class="goal-td">${f.cmi_goal.toFixed(2)}</td>
+      <td class="goal-td">$${f.meda_goal}</td>
+      <td class="goal-td">${f.strive_cmi_goal||'—'}</td>`;
+
+    f.weeks.forEach((w,wi)=>{
+      const isSnap=(wi+1)===snap;
+      const bc=isSnap?'background:rgba(255,176,32,.05);':'';
+      const bl=isSnap?'border-left:2px solid var(--amber2) !important;':'border-left:1px solid var(--border);';
+      const cv=parseFloat(w.cmi)||0;const mv=parseFloat(w.meda)||0;const hv=parseFloat(w.hppd)||0;
+      const cOk=cv>0&&cv>=f.cmi_goal;const mOk=mv>0&&mv>=f.meda_goal;
+      rows+=`
+        <td style="${bc}${bl}text-align:center" id="cmi_${fi}_${wi}" style="color:${cv>0?(cOk?'var(--green)':'var(--red)'):'var(--text3)'}">
+          <input class="cell-in" id="ci_${fi}_${wi}" type="number" step="0.01" value="${w.cmi}" placeholder="—"
+            oninput="wtSet(${fi},${wi},'cmi',this.value)"
+            style="color:${cv>0?(cOk?'var(--green)':'var(--red)'):'var(--text3)'}">
+        </td>
+        <td style="${bc}text-align:center" id="meda_${fi}_${wi}" style="color:${mv>0?(mOk?'var(--green)':'var(--red)'):'var(--text3)'}">
+          <input class="cell-in" id="ma_${fi}_${wi}" type="number" step="1" value="${w.meda}" placeholder="—"
+            oninput="wtSet(${fi},${wi},'meda',this.value)"
+            style="color:${mv>0?(mOk?'var(--green)':'var(--red)'):'var(--text3)'}">
+        </td>
+        <td style="${bc}text-align:center">
+          <input class="cell-in" id="hp_${fi}_${wi}" type="number" step="0.01" value="${w.hppd}" placeholder="—"
+            oninput="wtSet(${fi},${wi},'hppd',this.value)" style="color:var(--purple)">
+        </td>
+        <td style="${bc}text-align:center">
+          <input class="cell-in" id="b4_${fi}_${wi}" type="number" step="1" value="${w.bottom4||''}" placeholder="—"
+            oninput="wtSet(${fi},${wi},'bottom4',this.value)" style="color:var(--text2)">
+        </td>`;
+    });
+
+    rows+=`<td style="text-align:center;color:var(--green)" id="avg_${fi}">${avgH>0?avgH.toFixed(2):'—'}</td>
+      <td style="text-align:center" class="${spctCls}" id="spct_${fi}">${avgH>0?fp(qsp):'—'}</td>
+      <td style="text-align:center;color:var(--accent)" id="sdol_${fi}">${avgH>0?f$(qsd):'—'}</td>
+      </tr>`;
+  });
+
+  document.getElementById('wt_container').innerHTML=`<div class="wt-wrap"><table class="wt"><thead>${th}</thead><tbody>${rows}</tbody></table></div>`;
+}
+
+// ════════════════════════════════════════════════════
+// EXPORT
+// ════════════════════════════════════════════════════
+function exportXLSX(){
+  if(!window.XLSX){alert('XLSX library loading, try again.');return;}
+  if(!WT_FACS.length){alert('Load facilities first.');return;}
+  const nat=parseFloat(document.getElementById('wt_nat').value)||3.88886;
+  const adj_v=parseFloat(document.getElementById('wt_adj').value)||.7122;
+  const snap=parseInt(document.getElementById('snap_wk').value)||13;
+  const wb=XLSX.utils.book_new();
+
+  // Sheet 1: Wide format
+  const h1=['Facility','CMI Goal','Med A Goal','STRIVE CMI Goal'];
+  WT_WEEKS.forEach((d,i)=>h1.push(`Wk${i+1} CMI (${d})`,`Wk${i+1} Med A`,`Wk${i+1} hPPD`,`Wk${i+1} Bot4`));
+  h1.push('Qtr Avg hPPD','Proj STRIVE %','Proj STRIVE $/day');
+  const ws1=[h1];
+  WT_FACS.forEach(f=>{
+    const row=[f.name,f.cmi_goal,f.meda_goal,f.strive_cmi_goal||''];
+    f.weeks.forEach(w=>row.push(w.cmi||'',w.meda||'',w.hppd||'',w.bottom4||''));
+    const hppdVals=f.weeks.map(w=>parseFloat(w.hppd)||0).filter(v=>v>0);
+    const avgH=hppdVals.length?hppdVals.reduce((a,b)=>a+b)/hppdVals.length:0;
+    const sp=avgH>0?spct(avgH,nat,adj_v):0;
+    row.push(avgH?parseFloat(avgH.toFixed(2)):'',sp?fp(sp):'',sp?f$(getSD(sp)):'');
+    ws1.push(row);
+  });
+  const s1=XLSX.utils.aoa_to_sheet(ws1);
+  XLSX.utils.book_append_sheet(wb,s1,'Weekly Tracker (Wide)');
+
+  // Sheet 2: Long format — matches Weekly_Data.xlsx structure exactly
+  const h2=['Week End','Facility','CMI Goal','Med A Goal','STRIVE CMI Goal','CMI','Med A Rate','hPPD','Bottom 4','STRIVE %','STRIVE $/day','Notes'];
+  const ws2=[h2];
+  WT_FACS.forEach(f=>{
+    f.weeks.forEach((w,wi)=>{
+      const hv=parseFloat(w.hppd)||0;
+      const sp=hv>0?spct(hv,nat,adj_v):0;
+      ws2.push([WT_WEEKS[wi],f.name,f.cmi_goal,f.meda_goal,f.strive_cmi_goal||'',
+        parseFloat(w.cmi)||'',parseFloat(w.meda)||'',parseFloat(w.hppd)||'',parseFloat(w.bottom4)||'',
+        sp>0?parseFloat((sp*100).toFixed(1)):'',sp>0?parseFloat(getSD(sp).toFixed(2)):'',w.notes||'']);
+    });
+  });
+  const s2=XLSX.utils.aoa_to_sheet(ws2);
+  s2['!cols']=[{wch:14},{wch:18},{wch:10},{wch:10},{wch:14},{wch:10},{wch:10},{wch:10},{wch:8},{wch:12},{wch:14},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,s2,'Weekly Data (Long)');
+
+  // Sheet 3: Reference
+  const s3d=[
+    ['IL SNF Rate Optimizer — Reference'],[''],
+    ['Benchmark','Value'],['Base Rate','$92.25'],['Wage Factor','1.06'],
+    ['National hPPD',nat],['IL Adj Factor',adj_v],['Snapshot Week',snap],[''],
+    ['STRIVE Tiers'],['% Target','$/day','Annual (60 res)'],
+    ...KEY_TIERS.map(t=>[t,getSD(t),(getSD(t)*60*365).toFixed(0)]),
+  ];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s3d),'Reference');
+  XLSX.writeFile(wb,'Aperion_IL_SNF_Tracker_'+new Date().toISOString().split('T')[0]+'.xlsx');
+}
+
+function exportCSV(){
+  if(!WT_FACS.length){alert('Load facilities first.');return;}
+  const nat=parseFloat(document.getElementById('wt_nat').value)||3.88886;
+  const adj_v=parseFloat(document.getElementById('wt_adj').value)||.7122;
+  const rows=[['Week End','Facility','CMI Goal','Med A Goal','STRIVE CMI Goal','CMI','Med A Rate','hPPD','Bottom 4','STRIVE %','STRIVE $/day']];
+  WT_FACS.forEach(f=>f.weeks.forEach((w,wi)=>{
+    const hv=parseFloat(w.hppd)||0;const sp=hv>0?spct(hv,nat,adj_v):0;
+    rows.push([WT_WEEKS[wi],f.name,f.cmi_goal,f.meda_goal,f.strive_cmi_goal||'',
+      w.cmi||'',w.meda||'',w.hppd||'',w.bottom4||'',sp>0?fp(sp):'',sp>0?getSD(sp).toFixed(2):'']);
+  }));
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n'));
+  a.download='Aperion_Weekly_'+new Date().toISOString().split('T')[0]+'.csv';a.click();
+}
+
+// ════════════════════════════════════════════════════
+// RATE CALC
+// ════════════════════════════════════════════════════
+function syncCMI(v){
+  v=parseFloat(v)||1.60;
+  document.getElementById('cmi_sl').value=v;document.getElementById('cmi_sl_v').textContent=v.toFixed(2);
+  document.getElementById('cmi_in').value=v.toFixed(2);calcRate();
+}
+function calcRate(){
+  const b=parseFloat(document.getElementById('base_r').value)||92.25;
+  const w=parseFloat(document.getElementById('wage_f').value)||1.06;
+  const cmi=parseFloat(document.getElementById('cmi_in').value)||1.60;
+  const hppd=parseFloat(document.getElementById('c_hppd').value)||0;
+  const nat=parseFloat(document.getElementById('c_nat').value)||3.88886;
+  const adj=parseFloat(document.getElementById('c_adj').value)||.7122;
+  const alz=parseFloat(document.getElementById('c_alz').value)||0;
+  const smi=parseFloat(document.getElementById('c_smi').value)||0;
+  const tbi=parseFloat(document.getElementById('c_tbi').value)||0;
+  const tot=parseFloat(document.getElementById('c_tot').value)||63;
+  const util=parseFloat(document.getElementById('c_util').value)||0;
+  const base=nb(cmi,b,w);
+  const aalz=tot>0?alz/tot*.63:0;const asmi=tot>0?smi/tot*2.67:0;const atbi=tot>0?tbi/tot*5.00:0;
+  const bench=nat*adj;const sp=hppd>0?hppd/bench:0;const sd=getSD(sp);
+  const autp=util>=.70?4.75*cmi:0;const total=base+aalz+asmi+atbi+sd+autp;
+  document.getElementById('r_base').textContent=f$(base);document.getElementById('r_strive').textContent=f$(sd);
+  document.getElementById('r_total').textContent=f$(total);document.getElementById('r_spct').textContent=fp(sp);
+  document.getElementById('rb1').textContent=f$(base);document.getElementById('rb2').textContent=f$(aalz);
+  document.getElementById('rb3').textContent=f$(asmi);document.getElementById('rb4').textContent=f$(atbi);
+  document.getElementById('rb5').textContent=bench.toFixed(4)+' hPPD';
+  document.getElementById('rb6').textContent=fp2(sp)+' → tier '+fp(Math.floor(sp*100)/100);
+  document.getElementById('rb7').textContent=f$(sd);
+  document.getElementById('rb8').textContent=util>=.70?f$(autp)+' (qual)':'$0.00 (util<70%)';
+  document.getElementById('tier_pos').innerHTML=KEY_TIERS.map(t=>{
+    const d=getSD(t);const isCur=sp>=t&&(t===1.25||sp<(KEY_TIERS[KEY_TIERS.indexOf(t)+1]||99));
+    return`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;${isCur?'background:var(--surface2);border-left:3px solid var(--accent)':''}font-family:var(--mono);font-size:12px">
+      <span style="width:44px;color:var(--text2)">${fp(t)}</span><span style="flex:1">$${d.toFixed(2)}/day</span>
+      <span style="font-size:10px;color:var(--accent)">${isCur?'◀':''}</span></div>`;
+  }).join('');
+  document.getElementById('hppd_tiers').innerHTML=KEY_TIERS.map(t=>`<div class="rrow"><span class="rkey">${fp(t)} ($${getSD(t).toFixed(2)}/day)</span><span class="rval" style="color:var(--accent)">${(bench*t).toFixed(2)} hPPD</span></div>`).join('');
+}
+
+// ════════════════════════════════════════════════════
+// SCENARIOS + BREAK-EVEN
+// ════════════════════════════════════════════════════
+function runScenarios(){
+  const rates=SC_DEFS.map(s=>({...s,base:nb(s.cmi),sdol:getSD(s.s),tot:nb(s.cmi)+getSD(s.s)}));
+  const mx=Math.max(...rates.map(r=>r.tot));const sq=rates[5].tot;
+  document.getElementById('sc_cards').innerHTML=rates.map(r=>{
+    const best=r.tot===mx;const d=r.tot-sq;
+    return`<div style="background:var(--surface);border:1px solid ${best?'var(--green2)':'var(--border)'};padding:14px;position:relative">
+      ${best?'<div style="position:absolute;top:-1px;right:10px;font-family:var(--mono);font-size:9px;font-weight:600;color:var(--green);background:var(--surface);padding:0 6px;transform:translateY(-50%)">OPTIMAL</div>':''}
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:6px">${r.n}</div>
+      <div style="font-family:var(--mono);font-size:24px;font-weight:600;color:${best?'var(--green)':'var(--text)'}">${f$(r.tot)}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">${r.desc}</div>
+      <div style="font-family:var(--mono);font-size:11px;color:${d>=0?'var(--green)':'var(--red)'};margin-top:8px">${d>=0?'+':''}${f$(d)}/day · $${Math.abs(d*60*365/1000).toFixed(0)}K/yr</div>
+    </div>`;
+  }).join('');
+  calcBE();
+}
+function calcBE(){
+  const cc=parseFloat(document.getElementById('be_cc').value)||1.60;
+  const ct=parseFloat(document.getElementById('be_ct').value)||1.65;
+  const sc=parseFloat(document.getElementById('be_sc').value)||.86;
+  const st=parseFloat(document.getElementById('be_st').value)||.95;
+  ['be_cc_v','be_ct_v'].forEach((id,i)=>document.getElementById(id).textContent=[cc,ct][i].toFixed(2));
+  ['be_sc_v','be_st_v'].forEach((id,i)=>document.getElementById(id).textContent=[sc,st][i].toFixed(2));
+  const cd=(ct-cc)*92.25*1.06;const sd=getSD(st)-getSD(sc);
+  document.getElementById('be_cr').innerHTML=`<span class="${clr(cd)}">${cd>=0?'+':''}${f$(cd)}/day</span>`;
+  document.getElementById('be_ca').innerHTML=`<span class="${clr(cd)}">${cd>=0?'+':''}$${Math.abs(cd*60*365/1000).toFixed(0)}K/yr</span>`;
+  document.getElementById('be_sr').innerHTML=`<span class="${clr(sd)}">${sd>=0?'+':''}${f$(sd)}/day</span>`;
+  document.getElementById('be_sa').innerHTML=`<span class="${clr(sd)}">${sd>=0?'+':''}$${Math.abs(sd*60*365/1000).toFixed(0)}K/yr</span>`;
+  const tot=cd+sd;const wn=Math.abs(sd)>Math.abs(cd)?'STRIVE':'CMI';
+  document.getElementById('be_sum').innerHTML=`
+    <div class="rrow"><span class="rkey">Bigger lever</span><span class="rval" style="color:var(--amber)">${wn} by ${f$(Math.abs(Math.abs(sd)-Math.abs(cd)))}/day</span></div>
+    <div class="rrow"><span class="rkey">Combined</span><span class="rval ${clr(tot)}">${tot>=0?'+':''}${f$(tot)}/day → $${Math.abs(tot*60*365/1000).toFixed(0)}K/yr</span></div>
+    <div class="rrow"><span class="rkey">CMI pts to match STRIVE gain</span><span class="rval" style="color:var(--text2)">${Math.abs(sd/(92.25*1.06)*100).toFixed(1)} pts</span></div>`;
+}
+
+// ════════════════════════════════════════════════════
+// STRIVE TOOL
+// ════════════════════════════════════════════════════
+function buildTiers(){
+  document.getElementById('full_tiers').innerHTML=KEY_TIERS.map(t=>{
+    const d=getSD(t);
+    return`<div style="display:grid;grid-template-columns:60px 80px 1fr;font-family:var(--mono);font-size:12px">
+      <div style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2)">${fp(t)}</div>
+      <div style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--accent)">$${d.toFixed(2)}</div>
+      <div style="padding:5px 8px;border-bottom:1px solid var(--border);color:var(--green)">+$${(d*60*365/1000).toFixed(0)}K/yr</div></div>`;
+  }).join('');
+}
+function calcSA(){
+  const t=parseFloat(document.getElementById('sa_tgt').value)||.95;
+  const n=parseFloat(document.getElementById('sa_nat').value)||3.88886;
+  const a=parseFloat(document.getElementById('sa_adj').value)||.7122;
+  const bench=n*a;const req=bench*t;const d=getSD(t);
+  document.getElementById('sa_bench').textContent=bench.toFixed(4)+' hPPD';
+  document.getElementById('sa_req').textContent=req.toFixed(2)+' hPPD';
+  document.getElementById('sa_dol').textContent=f$(d)+'/day';
+  document.getElementById('sa_ann').textContent='$'+(d*60*365/1000).toFixed(0)+'K/year';
+}
+
+// ════════════════════════════════════════════════════
+// TAB SWITCH
+// ════════════════════════════════════════════════════
+function switchTab(id,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════
+(function init(){
+  loadCfgLocal();
+  const restored=loadLocal();
+  if(restored&&WT_FACS.length){
+    renderWT();
+    setStatus('Loaded saved data ('+WT_FACS.length+' facilities, '+WT_WEEKS.length+' weeks)','amber');
+  }else{
+    loadDefaultFacs();
+    setStatus('Running in local mode — data saves in your browser','amber');
+  }
+  calcRate();runScenarios();buildTiers();calcSA();
+})();
+</script>
+</body>
+</html>
