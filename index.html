@@ -1174,7 +1174,12 @@ function removeLastWeek(){
   renderWT();
 }
 
-function colorCMIcell(el, state, goal){
+function wtSetSnap(fi, field, val){
+  const clean = String(val).replace(/[$,]/g,'').trim();
+  WT_FACS[fi][field] = clean;
+  clearTimeout(window._saveTimer);
+  window._saveTimer = setTimeout(()=>{ maybeSyncSP(); renderWT(); }, 800);
+}
   const v = parseFloat(el.value)||0;
   el.style.color = v > 0 ? (v >= goal ? 'var(--green)' : 'var(--red)') : 'var(--text3)';
 }
@@ -1262,7 +1267,10 @@ function renderWT(){
   });
   th+=`<th style="text-align:center;color:var(--green);white-space:nowrap;font-size:9px">Qtr Avg<br>hPPD</th>
     <th style="text-align:center;color:var(--purple);font-size:9px">Proj<br>STRIVE %</th>
-    <th style="text-align:center;color:var(--accent);font-size:9px">STRIVE<br>$/day</th></tr>`;
+    <th style="text-align:center;color:var(--accent);font-size:9px">STRIVE<br>$/day</th>
+    <th style="text-align:center;font-size:9px;border-left:3px solid var(--purple);background:var(--purple-bg);color:var(--purple);white-space:nowrap">Proj Snap<br>CMI</th>
+    <th style="text-align:center;font-size:9px;border-left:1px solid var(--border);background:var(--green-bg);color:var(--green);white-space:nowrap">Final Snap<br>CMI</th>
+    <th style="text-align:center;font-size:9px;background:var(--green-bg);color:var(--green);white-space:nowrap">Final<br>STRIVE $</th></tr>`;
 
   // Sub-header
   th+=`<tr><th class="fac-sticky" style="position:sticky;left:0;z-index:6;background:#f9f9f9"></th><th></th><th></th><th></th>`;
@@ -1275,7 +1283,9 @@ function renderWT(){
       <th style="text-align:center;font-size:9px;color:var(--purple);${bc}">hPPD</th>
       <th style="text-align:center;font-size:9px;color:var(--text3);${bc}">Bot 4</th>`;
   });
-  th+=`<th></th><th></th><th></th></tr>`;
+  th+=`<th style="border-left:3px solid var(--purple);background:var(--purple-bg)"></th>
+    <th style="background:var(--green-bg)"></th>
+    <th style="background:var(--green-bg)"></th></tr>`;
 
   // Rows — hPPD average uses only visible weeks
   let rows='';
@@ -1331,9 +1341,52 @@ function renderWT(){
         </td>`;
     });
 
+    // Projected Snap CMI — manual entry
+    const projSnap  = f.projSnapCMI  || '';
+    const projSnapV = parseFloat(projSnap) || 0;
+    const projSnapRate = projSnapV > 0 ? f$(92.25*1.06*projSnapV) : '';
+    const projSnapSD   = projSnapV > 0 ? getSD(qsp) : 0;
+
+    // Final Snap CMI — manual entry (actual CMI on snapshot day)
+    const finalSnap  = f.finalSnapCMI || '';
+    const finalSnapV = parseFloat(finalSnap) || 0;
+    const finalSnapRate = finalSnapV > 0 ? f$(92.25*1.06*finalSnapV) : '';
+
+    // Delta: Final vs Projected
+    const delta = finalSnapV > 0 && projSnapV > 0 ? finalSnapV - projSnapV : null;
+    const deltaStr = delta !== null
+      ? (delta >= 0
+          ? '<span class="pos" style="font-size:9px">▲ +'+delta.toFixed(2)+'</span>'
+          : '<span class="neg" style="font-size:9px">▼ '+delta.toFixed(2)+'</span>')
+      : '';
+
     rows+=`<td style="text-align:center;color:var(--green);font-weight:700" id="avg_${fi}">${avgH>0?avgH.toFixed(2):'—'}</td>
       <td style="text-align:center;font-weight:700" class="${spctCls}" id="spct_${fi}">${avgH>0?fp(qsp):'—'}</td>
       <td style="text-align:center;color:var(--accent);font-weight:700" id="sdol_${fi}">${avgH>0?f$(qsd):'—'}</td>
+
+      <td style="text-align:center;border-left:3px solid var(--purple);background:var(--purple-bg);padding:3px 5px;min-width:80px">
+        <input class="cell-in" type="text" inputmode="decimal"
+          value="${projSnap}" placeholder="0.00"
+          onchange="wtSetSnap(${fi},'projSnapCMI',this.value)"
+          style="width:58px;color:var(--purple);font-weight:700;font-size:13px">
+        <div style="font-size:9px;color:var(--text3);margin-top:1px">${projSnapRate}</div>
+      </td>
+
+      <td style="text-align:center;border-left:2px solid var(--green);background:var(--green-bg);padding:3px 5px;min-width:80px">
+        <input class="cell-in" type="text" inputmode="decimal"
+          value="${finalSnap}" placeholder="0.00"
+          onchange="wtSetSnap(${fi},'finalSnapCMI',this.value)"
+          style="width:58px;color:var(--green);font-weight:700;font-size:13px">
+        <div style="font-size:9px;color:var(--text3);margin-top:1px">${finalSnapRate}</div>
+        ${deltaStr ? '<div style="margin-top:1px">'+deltaStr+'</div>' : ''}
+      </td>
+
+      <td style="text-align:center;background:var(--green-bg);padding:3px 6px;min-width:80px">
+        ${finalSnapV>0
+          ? `<div style="font-weight:700;color:var(--green);font-size:12px">${f$(92.25*1.06*finalSnapV)}</div>
+             <div style="font-size:9px;color:var(--text3)">nursing base</div>`
+          : '<div style="color:var(--text3);font-size:11px">—</div>'}
+      </td>
       </tr>`;
   });
 
@@ -1354,7 +1407,7 @@ function exportXLSX(){
   // Sheet 1: Wide format
   const h1=['Facility','CMI Goal','Med A Goal','STRIVE CMI Goal'];
   WT_WEEKS.forEach((d,i)=>h1.push(`Wk${i+1} CMI (${d})`,`Wk${i+1} Med A`,`Wk${i+1} hPPD`,`Wk${i+1} Bot4`));
-  h1.push('Qtr Avg hPPD','Proj STRIVE %','Proj STRIVE $/day');
+  h1.push('Qtr Avg hPPD','Proj STRIVE %','Proj STRIVE $/day','Proj Snap CMI','Proj Nursing Rate','Final Snap CMI','Final Nursing Rate','CMI Delta');
   const ws1=[h1];
   WT_FACS.forEach(f=>{
     const row=[f.name,f.cmi_goal,f.meda_goal,f.strive_cmi_goal||''];
@@ -1362,7 +1415,22 @@ function exportXLSX(){
     const hppdVals=f.weeks.map(w=>parseFloat(w.hppd)||0).filter(v=>v>0);
     const avgH=hppdVals.length?hppdVals.reduce((a,b)=>a+b)/hppdVals.length:0;
     const sp=avgH>0?spct(avgH,nat,adj_v):0;
-    row.push(avgH?parseFloat(avgH.toFixed(2)):'',sp?fp(sp):'',sp?f$(getSD(sp)):'');
+    const cmiVals=f.weeks.map(w=>parseFloat(w.cmi)||0).filter(v=>v>0);
+    const projSnap=parseFloat(f.projSnapCMI)||0;
+    const projRate=projSnap>0?parseFloat((92.25*1.06*projSnap).toFixed(2)):'';
+    const finalSnap=parseFloat(f.finalSnapCMI)||0;
+    const finalRate=finalSnap>0?parseFloat((92.25*1.06*finalSnap).toFixed(2)):'';
+    const delta=projSnap>0&&finalSnap>0?parseFloat((finalSnap-projSnap).toFixed(2)):'';
+    row.push(
+      avgH?parseFloat(avgH.toFixed(2)):'',
+      sp?fp(sp):'',
+      sp?f$(getSD(sp)):'',
+      projSnap?parseFloat(projSnap.toFixed(2)):'',
+      projRate,
+      finalSnap||'',
+      finalRate,
+      delta
+    );
     ws1.push(row);
   });
   const s1=XLSX.utils.aoa_to_sheet(ws1);
