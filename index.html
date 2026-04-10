@@ -1027,23 +1027,32 @@ function maybeSyncSP(){
 // WEEKLY TRACKER
 // ════════════════════════════════════════════════════
 function loadDefaultFacs(){
+  // Confirm before wiping if data already exists
+  if(WT_FACS.length > 0 && WT_WEEKS.length > 0){
+    const ok = confirm(
+      'Reset Facilities will reload the 20 Aperion IL facilities and clear ALL weeks and data.\n\nAre you sure? This cannot be undone.'
+    );
+    if(!ok) return;
+  }
   const key = document.getElementById('wt_period') ? document.getElementById('wt_period').value : 'q1_2026';
   const p = WT_PERIODS[key] || WT_PERIODS['q1_2026'];
-  // Build first 3 weeks of the selected quarter
   const w1 = p.startDate;
   const w2 = addDays(w1, 7);
   const w3 = addDays(w2, 7);
   WT_WEEKS = [w1, w2, w3];
   WT_FACS = DEFAULT_FACS.map(f => {
     const seed = SEED[f.name] || [];
-    return{...f, weeks: WT_WEEKS.map((_,i) => ({
-      cmi:  seed[i] ? seed[i].cmi  : '',
-      meda: seed[i] ? seed[i].meda : '',
-      hppd: seed[i] ? seed[i].hppd : '',
-      bottom4: 0, notes: ''
-    }))};
+    return{...f,
+      projSnapCMI: '',
+      finalSnapCMI: '',
+      weeks: WT_WEEKS.map((_,i) => ({
+        cmi:  seed[i] ? seed[i].cmi  : '',
+        meda: seed[i] ? seed[i].meda : '',
+        hppd: seed[i] ? seed[i].hppd : '',
+        bottom4: 0, notes: ''
+      }))
+    };
   });
-  // Set date picker to week 4 ready to add
   document.getElementById('new_week_date').value = addDays(w3, 7);
   renderWT();
 }
@@ -1066,37 +1075,26 @@ function onPeriodChange(){
   const p = WT_PERIODS[key];
   if(!p) return;
 
-  // Ask user if they want to clear old data if weeks exist
-  if(WT_WEEKS.length > 0){
-    const keep = confirm(
-      'Switch to ' + p.name + '?\n\n' +
-      'Click OK to clear current weeks and start fresh with ' + p.name + '.\n' +
-      'Click Cancel to keep current weeks and just update the settings.'
-    );
-    if(keep){
-      // Clear weeks, keep facility list and goals intact
-      WT_WEEKS = [];
-      WT_FACS.forEach(f => f.weeks = []);
-      // Add first two weeks of the new quarter to start
-      const w1 = p.startDate;
-      const w2 = addDays(w1, 7);
-      WT_WEEKS = [w1, w2];
-      WT_FACS.forEach(f => f.weeks = [
-        {cmi:'',meda:'',hppd:'',bottom4:0,notes:''},
-        {cmi:'',meda:'',hppd:'',bottom4:0,notes:''}
-      ]);
-      // Set date picker to week 3 ready to add
-      document.getElementById('new_week_date').value = addDays(w2, 7);
-    }
-  } else {
-    // No weeks yet — just set the start date
-    document.getElementById('new_week_date').value = p.startDate;
-  }
+  // NEVER clear data — just update settings and filter the view to the new quarter.
+  // All historical weeks are preserved. The "Show current quarter only" checkbox
+  // controls what's visible on screen.
 
-  // Always update benchmarks and snapshot week
-  document.getElementById('wt_nat').value = p.bench;
-  document.getElementById('wt_adj').value = p.adj;
+  // Update benchmarks and snapshot week for the selected quarter
+  document.getElementById('wt_nat').value  = p.bench;
+  document.getElementById('wt_adj').value  = p.adj;
   document.getElementById('snap_wk').value = p.snapWk;
+
+  // Set date picker to first week of the new quarter so + Add This Week
+  // starts in the right place — but only if no weeks for this quarter exist yet
+  const qtrRange = getQtrDateRange(key);
+  const hasQtrWeeks = WT_WEEKS.some(d => d >= qtrRange.start && d <= qtrRange.end);
+  if(!hasQtrWeeks){
+    document.getElementById('new_week_date').value = p.startDate;
+  } else {
+    // Advance date picker past the last week already in this quarter
+    const lastQtrWeek = [...WT_WEEKS].filter(d => d >= qtrRange.start && d <= qtrRange.end).sort().pop();
+    document.getElementById('new_week_date').value = addDays(lastQtrWeek, 7);
+  }
 
   updatePeriodInfoBar();
   renderWT();
@@ -1165,11 +1163,31 @@ function addNextWeek(){
 }
 
 function removeLastWeek(){
-  if(WT_WEEKS.length <= 1) return;
-  // Reset date picker to the week we just removed so user can re-add if needed
-  document.getElementById('new_week_date').value = WT_WEEKS[WT_WEEKS.length - 1];
-  WT_WEEKS.pop();
-  WT_FACS.forEach(f => f.weeks.pop());
+  const period = document.getElementById('wt_period').value;
+  const qtrRange = getQtrDateRange(period);
+  const filterOn = document.getElementById('filter_qtr') ? document.getElementById('filter_qtr').checked : false;
+
+  // Find the last week index belonging to the current quarter (or globally if filter is off)
+  let targetIdx = -1;
+  if(filterOn){
+    // Only remove from current quarter's weeks
+    for(let i = WT_WEEKS.length - 1; i >= 0; i--){
+      if(WT_WEEKS[i] >= qtrRange.start && WT_WEEKS[i] <= qtrRange.end){
+        targetIdx = i; break;
+      }
+    }
+  } else {
+    targetIdx = WT_WEEKS.length - 1;
+  }
+
+  if(targetIdx < 0){ alert('No weeks to remove for this quarter.'); return; }
+  if(WT_WEEKS.length <= 1){ alert('Cannot remove the last remaining week.'); return; }
+
+  // Reset date picker to the removed week
+  document.getElementById('new_week_date').value = WT_WEEKS[targetIdx];
+  // Remove from weeks array and all facility data at that index
+  WT_WEEKS.splice(targetIdx, 1);
+  WT_FACS.forEach(f => f.weeks.splice(targetIdx, 1));
   updatePeriodInfoBar();
   renderWT();
 }
@@ -1180,6 +1198,8 @@ function wtSetSnap(fi, field, val){
   clearTimeout(window._saveTimer);
   window._saveTimer = setTimeout(()=>{ maybeSyncSP(); renderWT(); }, 800);
 }
+
+function colorCMIcell(el, state, goal){
   const v = parseFloat(el.value)||0;
   el.style.color = v > 0 ? (v >= goal ? 'var(--green)' : 'var(--red)') : 'var(--text3)';
 }
