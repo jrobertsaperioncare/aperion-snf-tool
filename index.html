@@ -139,8 +139,12 @@
   .fac-sticky{font-family:var(--sans);font-weight:700;font-size:12px;color:var(--text);position:sticky;left:0;background:var(--surface);z-index:3;min-width:138px;border-right:2px solid var(--border) !important}
   .fac-sticky:hover{background:var(--accent-bg) !important}
   .goal-td{background:#f9f9f9 !important;color:var(--text3);font-size:11px;text-align:center}
-  .cell-in{width:60px;background:transparent;border:none;border-bottom:1px solid var(--border);color:inherit;font-family:var(--sans);font-size:12px;padding:1px 3px;outline:none;text-align:center;display:block}
-  .cell-in:focus{border-bottom-color:var(--accent);background:var(--accent-bg)}
+  .cell-in{background:transparent;border:none;border-bottom:1.5px solid var(--border);font-family:var(--sans);font-size:12px;font-weight:600;padding:2px 4px;outline:none;text-align:center;display:block;min-width:58px}
+  .cell-in:focus{border-bottom-color:var(--accent);background:var(--accent-bg);border-radius:4px 4px 0 0}
+  .cell-in::placeholder{color:var(--border);font-weight:400}
+  /* Remove number input spinners globally */
+  input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  input[type=number]{-moz-appearance:textfield}
   .snap-td{background:var(--amber-bg) !important;border-left:2px solid var(--amber) !important}
   .sync-spin{animation:spin 1s linear infinite;display:inline-block}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -1015,9 +1019,21 @@ function removeLastWeek(){
   renderWT();
 }
 
+function colorCMIcell(el, state, goal){
+  const v = parseFloat(el.value)||0;
+  el.style.color = v > 0 ? (v >= goal ? 'var(--green)' : 'var(--red)') : 'var(--text3)';
+}
+function colorMedAcell(el, state, goal){
+  const v = parseFloat(String(el.value).replace(/[$,]/g,''))||0;
+  el.style.color = v > 0 ? (v >= goal ? 'var(--green)' : 'var(--red)') : 'var(--text3)';
+}
+
 function wtSet(fi,wi,field,val){
-  WT_FACS[fi].weeks[wi][field]=val;
-  // update just the summary cells for this row without full re-render
+  // Strip $ and commas from Med A values so $799.50 and 799.50 both work
+  const clean = String(val).replace(/[$,]/g,'').trim();
+  WT_FACS[fi].weeks[wi][field] = clean;
+
+  // Update summary columns live without full re-render
   const nat=parseFloat(document.getElementById('wt_nat').value)||3.88886;
   const adj_v=parseFloat(document.getElementById('wt_adj').value)||.7122;
   const f=WT_FACS[fi];
@@ -1031,18 +1047,7 @@ function wtSet(fi,wi,field,val){
   if(avgEl) avgEl.textContent=avgH>0?avgH.toFixed(2):'—';
   if(pctEl){pctEl.textContent=avgH>0?fp(sp):'—';pctEl.className=sp>=.95?'pos':sp>=.85?'warn':'neg';}
   if(dolEl) dolEl.textContent=avgH>0?f$(sd):'—';
-  // Color the CMI cell
-  const cmiEl=document.getElementById(`cmi_${fi}_${wi}`);
-  if(cmiEl&&field==='cmi'){
-    const v=parseFloat(val)||0;
-    cmiEl.style.color=v>0?(v>=f.cmi_goal?'var(--green)':'var(--red)'):'var(--text3)';
-  }
-  const medaEl=document.getElementById(`meda_${fi}_${wi}`);
-  if(medaEl&&field==='meda'){
-    const v=parseFloat(val)||0;
-    medaEl.style.color=v>0?(v>=f.meda_goal?'var(--green)':'var(--red)'):'var(--text3)';
-  }
-  // debounce save
+
   clearTimeout(window._saveTimer);
   window._saveTimer=setTimeout(()=>maybeSyncSP(),2000);
 }
@@ -1103,32 +1108,45 @@ function renderWT(){
       const isSnap=(wi+1)===snap;
       const bc=isSnap?'background:rgba(255,176,32,.05);':'';
       const bl=isSnap?'border-left:2px solid var(--amber) !important;':'border-left:1px solid var(--border);';
-      const cv=parseFloat(w.cmi)||0;const mv=parseFloat(w.meda)||0;const hv=parseFloat(w.hppd)||0;
-      const cOk=cv>0&&cv>=f.cmi_goal;const mOk=mv>0&&mv>=f.meda_goal;
+      const cv=parseFloat(w.cmi)||0;
+      const mv=parseFloat(String(w.meda).replace(/[$,]/g,''))||0;
+      const hv=parseFloat(w.hppd)||0;
+      const cOk=cv>0&&cv>=f.cmi_goal;
+      const mOk=mv>0&&mv>=f.meda_goal;
+      // Display Med A with $ prefix if it has a value
+      const medaDisplay = w.meda !== '' && w.meda !== undefined ? String(w.meda).replace(/^\$/,'') : '';
       rows+=`
-        <td style="${bc}${bl}text-align:center" id="cmi_${fi}_${wi}" style="color:${cv>0?(cOk?'var(--green)':'var(--red)'):'var(--text3)'}">
-          <input class="cell-in" id="ci_${fi}_${wi}" type="number" step="0.01" value="${w.cmi}" placeholder="—"
-            oninput="wtSet(${fi},${wi},'cmi',this.value)"
-            style="color:${cv>0?(cOk?'var(--green)':'var(--red)'):'var(--text3)'}">
+        <td style="${bc}${bl}text-align:center;padding:3px 4px">
+          <input class="cell-in" id="ci_${fi}_${wi}" type="text" inputmode="decimal"
+            value="${w.cmi}" placeholder="0.00"
+            onchange="wtSet(${fi},${wi},'cmi',this.value)"
+            oninput="colorCMIcell(this,${cv>0?(cOk?1:0):2},${f.cmi_goal})"
+            style="width:58px;color:${cv>0?(cOk?'var(--green)':'var(--red)'):'var(--text3)'}">
         </td>
-        <td style="${bc}text-align:center" id="meda_${fi}_${wi}" style="color:${mv>0?(mOk?'var(--green)':'var(--red)'):'var(--text3)'}">
-          <input class="cell-in" id="ma_${fi}_${wi}" type="number" step="1" value="${w.meda}" placeholder="—"
-            oninput="wtSet(${fi},${wi},'meda',this.value)"
-            style="color:${mv>0?(mOk?'var(--green)':'var(--red)'):'var(--text3)'}">
+        <td style="${bc}text-align:center;padding:3px 4px">
+          <input class="cell-in" id="ma_${fi}_${wi}" type="text" inputmode="decimal"
+            value="${medaDisplay}" placeholder="000"
+            onchange="wtSet(${fi},${wi},'meda',this.value)"
+            oninput="colorMedAcell(this,${mv>0?(mOk?1:0):2},${f.meda_goal})"
+            style="width:68px;color:${mv>0?(mOk?'var(--green)':'var(--red)'):'var(--text3)'}">
         </td>
-        <td style="${bc}text-align:center">
-          <input class="cell-in" id="hp_${fi}_${wi}" type="number" step="0.01" value="${w.hppd}" placeholder="—"
-            oninput="wtSet(${fi},${wi},'hppd',this.value)" style="color:var(--purple)">
+        <td style="${bc}text-align:center;padding:3px 4px">
+          <input class="cell-in" id="hp_${fi}_${wi}" type="text" inputmode="decimal"
+            value="${w.hppd}" placeholder="0.00"
+            onchange="wtSet(${fi},${wi},'hppd',this.value)"
+            style="width:58px;color:var(--purple)">
         </td>
-        <td style="${bc}text-align:center">
-          <input class="cell-in" id="b4_${fi}_${wi}" type="number" step="1" value="${w.bottom4||''}" placeholder="—"
-            oninput="wtSet(${fi},${wi},'bottom4',this.value)" style="color:var(--text2)">
+        <td style="${bc}text-align:center;padding:3px 4px">
+          <input class="cell-in" id="b4_${fi}_${wi}" type="text" inputmode="numeric"
+            value="${w.bottom4||''}" placeholder="0"
+            onchange="wtSet(${fi},${wi},'bottom4',this.value)"
+            style="width:40px;color:var(--text2)">
         </td>`;
     });
 
-    rows+=`<td style="text-align:center;color:var(--green)" id="avg_${fi}">${avgH>0?avgH.toFixed(2):'—'}</td>
-      <td style="text-align:center" class="${spctCls}" id="spct_${fi}">${avgH>0?fp(qsp):'—'}</td>
-      <td style="text-align:center;color:var(--accent)" id="sdol_${fi}">${avgH>0?f$(qsd):'—'}</td>
+    rows+=`<td style="text-align:center;color:var(--green);font-weight:700" id="avg_${fi}">${avgH>0?avgH.toFixed(2):'—'}</td>
+      <td style="text-align:center;font-weight:700" class="${spctCls}" id="spct_${fi}">${avgH>0?fp(qsp):'—'}</td>
+      <td style="text-align:center;color:var(--accent);font-weight:700" id="sdol_${fi}">${avgH>0?f$(qsd):'—'}</td>
       </tr>`;
   });
 
