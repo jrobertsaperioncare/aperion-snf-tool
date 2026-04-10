@@ -1018,13 +1018,24 @@ function maybeSyncSP(){
 // WEEKLY TRACKER
 // ════════════════════════════════════════════════════
 function loadDefaultFacs(){
-  WT_WEEKS=['2026-01-02','2026-01-09','2026-01-16'];
-  WT_FACS=DEFAULT_FACS.map(f=>{
-    const seed=SEED[f.name]||[];
-    return{...f,weeks:WT_WEEKS.map((_,i)=>({
-      cmi:seed[i]?seed[i].cmi:'',meda:seed[i]?seed[i].meda:'',hppd:seed[i]?seed[i].hppd:'',bottom4:0,notes:''
+  const key = document.getElementById('wt_period') ? document.getElementById('wt_period').value : 'q1_2026';
+  const p = WT_PERIODS[key] || WT_PERIODS['q1_2026'];
+  // Build first 3 weeks of the selected quarter
+  const w1 = p.startDate;
+  const w2 = addDays(w1, 7);
+  const w3 = addDays(w2, 7);
+  WT_WEEKS = [w1, w2, w3];
+  WT_FACS = DEFAULT_FACS.map(f => {
+    const seed = SEED[f.name] || [];
+    return{...f, weeks: WT_WEEKS.map((_,i) => ({
+      cmi:  seed[i] ? seed[i].cmi  : '',
+      meda: seed[i] ? seed[i].meda : '',
+      hppd: seed[i] ? seed[i].hppd : '',
+      bottom4: 0, notes: ''
     }))};
   });
+  // Set date picker to week 4 ready to add
+  document.getElementById('new_week_date').value = addDays(w3, 7);
   renderWT();
 }
 
@@ -1045,15 +1056,42 @@ function onPeriodChange(){
   const key = document.getElementById('wt_period').value;
   const p = WT_PERIODS[key];
   if(!p) return;
-  // Update benchmarks
+
+  // Ask user if they want to clear old data if weeks exist
+  if(WT_WEEKS.length > 0){
+    const keep = confirm(
+      'Switch to ' + p.name + '?\n\n' +
+      'Click OK to clear current weeks and start fresh with ' + p.name + '.\n' +
+      'Click Cancel to keep current weeks and just update the settings.'
+    );
+    if(keep){
+      // Clear weeks, keep facility list and goals intact
+      WT_WEEKS = [];
+      WT_FACS.forEach(f => f.weeks = []);
+      // Add first two weeks of the new quarter to start
+      const w1 = p.startDate;
+      const w2 = addDays(w1, 7);
+      WT_WEEKS = [w1, w2];
+      WT_FACS.forEach(f => f.weeks = [
+        {cmi:'',meda:'',hppd:'',bottom4:0,notes:''},
+        {cmi:'',meda:'',hppd:'',bottom4:0,notes:''}
+      ]);
+      // Set date picker to week 3 ready to add
+      document.getElementById('new_week_date').value = addDays(w2, 7);
+    }
+  } else {
+    // No weeks yet — just set the start date
+    document.getElementById('new_week_date').value = p.startDate;
+  }
+
+  // Always update benchmarks and snapshot week
   document.getElementById('wt_nat').value = p.bench;
   document.getElementById('wt_adj').value = p.adj;
-  // Set snapshot week
   document.getElementById('snap_wk').value = p.snapWk;
-  // Set date picker to first week of this quarter
-  document.getElementById('new_week_date').value = p.startDate;
+
   updatePeriodInfoBar();
   renderWT();
+  saveLocal();
 }
 
 function updatePeriodInfoBar(){
@@ -1552,20 +1590,21 @@ function switchTab(id,btn){
 (function init(){
   loadCfgLocal();
 
-  // Set Q1 2026 as default period
-  document.getElementById('wt_period').value = 'q1_2026';
-  document.getElementById('wt_nat').value = '3.9016';
-  document.getElementById('wt_adj').value = '0.7122';
-  document.getElementById('snap_wk').value = '13';
-  // Set date picker to first week of Q1 2026
-  document.getElementById('new_week_date').value = '2026-01-09';
+  // Default to Q1 2026
+  const defaultKey = 'q1_2026';
+  document.getElementById('wt_period').value = defaultKey;
+  const defP = WT_PERIODS[defaultKey];
+  document.getElementById('wt_nat').value   = defP.bench;
+  document.getElementById('wt_adj').value   = defP.adj;
+  document.getElementById('snap_wk').value  = defP.snapWk;
+  document.getElementById('new_week_date').value = addDays(defP.startDate, 21); // wk 4 ready
 
   const restored = loadLocal();
   if(restored && WT_FACS.length){
     renderWT();
     updatePeriodInfoBar();
-    setStatus('Loaded saved data ('+WT_FACS.length+' facilities, '+WT_WEEKS.length+' weeks)','amber');
-  }else{
+    setStatus('Loaded saved data — '+WT_FACS.length+' facilities, '+WT_WEEKS.length+' weeks','amber');
+  } else {
     loadDefaultFacs();
     updatePeriodInfoBar();
     setStatus('Running in local mode — data saves automatically','amber');
