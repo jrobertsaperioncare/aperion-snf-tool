@@ -211,38 +211,62 @@
 <div id="tab-weekly" class="page active">
 
   <div class="wt-controls">
-    <button class="btn btn-primary btn-sm" onclick="addWeek()">+ Add Week</button>
-    <button class="btn btn-secondary btn-sm" onclick="removeLastWeek()">− Remove Last</button>
-    <button class="btn btn-secondary btn-sm" onclick="loadDefaultFacs()">↺ Reset Facilities</button>
-    <div style="display:flex;align-items:center;gap:6px">
-      <label class="form-label" style="margin:0;white-space:nowrap;font-size:10px">Snapshot wk:</label>
-      <input type="number" id="snap_wk" min="1" max="20" value="13" style="width:50px" oninput="renderWT()">
+    <!-- ROW 1: Week management -->
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%">
+      <span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap">Week ending:</span>
+      <input type="date" id="new_week_date" style="width:150px;font-size:12px;padding:5px 8px"
+        value="2026-01-23">
+      <button class="btn btn-primary btn-sm" onclick="addWeekByDate()">+ Add This Week</button>
+      <button class="btn btn-secondary btn-sm" onclick="addNextWeek()">+ Next Friday</button>
+      <button class="btn btn-secondary btn-sm" onclick="removeLastWeek()">− Remove Last Week</button>
+      <button class="btn btn-secondary btn-sm" onclick="loadDefaultFacs()">↺ Reset Facilities</button>
+
+      <div style="display:flex;align-items:center;gap:6px;margin-left:4px">
+        <label class="form-label" style="margin:0;white-space:nowrap;font-size:10px">Rate Period:</label>
+        <select id="wt_period" style="width:130px;font-size:11px;padding:5px 8px" onchange="onPeriodChange()">
+          <option value="jan26">Jan 2026 (Q3 2025 PBJ)</option>
+          <option value="apr26">Apr 2026 (Q4 2025 PBJ)</option>
+          <option value="jul26">Jul 2026 (Q1 2026 PBJ)</option>
+          <option value="oct26">Oct 2026 (Q2 2026 PBJ)</option>
+          <option value="jan27">Jan 2027 (Q3 2026 PBJ)</option>
+        </select>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:6px">
+        <label class="form-label" style="margin:0;white-space:nowrap;font-size:10px">Snapshot wk:</label>
+        <input type="number" id="snap_wk" min="1" max="20" value="13" style="width:48px;font-size:12px;padding:5px 8px" oninput="renderWT()">
+      </div>
+
+      <div style="display:flex;align-items:center;gap:6px">
+        <label class="form-label" style="margin:0;white-space:nowrap;font-size:10px">Natl hPPD:</label>
+        <input type="number" id="wt_nat" value="3.9016" step="0.00001" style="width:80px;font-size:12px;padding:5px 8px" oninput="renderWT()">
+      </div>
+
+      <div style="display:flex;align-items:center;gap:6px">
+        <label class="form-label" style="margin:0;white-space:nowrap;font-size:10px">IL Adj:</label>
+        <input type="number" id="wt_adj" value="0.7122" step="0.0001" style="width:64px;font-size:12px;padding:5px 8px" oninput="renderWT()">
+      </div>
+
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn btn-success btn-sm" onclick="exportXLSX()">⬇ Excel</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ CSV</button>
+        <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨 Print</button>
+      </div>
     </div>
-    <div style="display:flex;align-items:center;gap:6px">
-      <label class="form-label" style="margin:0;white-space:nowrap;font-size:10px">Natl hPPD:</label>
-      <input type="number" id="wt_nat" value="3.88886" step="0.00001" style="width:78px" oninput="renderWT()">
-    </div>
-    <div style="display:flex;align-items:center;gap:6px">
-      <label class="form-label" style="margin:0;white-space:nowrap;font-size:10px">IL Adj:</label>
-      <input type="number" id="wt_adj" value="0.7122" step="0.0001" style="width:64px" oninput="renderWT()">
-    </div>
-    <div style="display:flex;align-items:center;gap:6px">
-      <label class="form-label" style="margin:0;white-space:nowrap;font-size:10px">Rate period:</label>
-      <select id="wt_period" style="width:110px;font-size:11px" onchange="renderWT()">
-        <option>Q1 2026</option><option>Q2 2026</option><option>Q3 2026</option><option>Q4 2026</option><option>Q1 2027</option>
-      </select>
-    </div>
-    <div style="margin-left:auto;display:flex;gap:6px">
-      <button class="btn btn-success btn-sm" onclick="exportXLSX()">⬇ Excel</button>
-      <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ CSV</button>
-      <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨 Print</button>
+
+    <!-- ROW 2: Rate period info bar -->
+    <div id="period_info_bar" style="width:100%;margin-top:8px;padding:8px 12px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:8px;font-size:11px;display:flex;gap:24px;flex-wrap:wrap">
+      <span><strong style="color:var(--accent)">Rate Period:</strong> <span id="pib_name">Jan 1, 2026</span></span>
+      <span><strong style="color:var(--accent)">PBJ Window:</strong> <span id="pib_pbj">Jul 1 – Sep 30, 2025</span></span>
+      <span><strong style="color:var(--amber)">CMI Snapshot:</strong> <span id="pib_snap">Sep 30, 2025</span></span>
+      <span><strong style="color:var(--purple)">Benchmark:</strong> <span id="pib_bench">3.9016 hPPD</span></span>
+      <span><strong style="color:var(--text3)">Weeks tracked:</strong> <span id="pib_wks">3</span></span>
     </div>
   </div>
 
-  <div class="alert alert-info" id="wt_hint">
-    <strong>Data entry:</strong> CMI and Med A Rate are entered by your consultants. hPPD is entered by RVPs.
-    Snapshot column (wk <span id="snap_wk_lbl">13</span>) is highlighted amber — that week's CMI sets your next rate.
-    <span id="sp_hint"> Data saves locally in your browser. Connect SharePoint in the <strong>⚙ SP Setup</strong> tab for team-shared storage.</span>
+  <div class="alert alert-info" id="wt_hint" style="margin-top:10px">
+    <strong>How to advance the week:</strong> Set the date in the date picker above and click <strong>+ Add This Week</strong>, or click <strong>+ Next Friday</strong> to auto-advance 7 days. Each new column appears on the right. The snapshot column (▲) is highlighted amber — that week's CMI drives your next rate period.
+    <span id="sp_hint"> Data saves locally in your browser automatically.</span>
   </div>
 
   <div id="wt_container"></div>
@@ -1003,19 +1027,93 @@ function loadDefaultFacs(){
   renderWT();
 }
 
-function addWeek(){
-  if(!WT_FACS.length){loadDefaultFacs();return}
-  const last=WT_WEEKS.length?new Date(WT_WEEKS[WT_WEEKS.length-1]):new Date('2026-01-16');
-  last.setDate(last.getDate()+7);
-  const nd=last.toISOString().split('T')[0];
+// ── Period definitions with PBJ windows, snapshots, benchmarks ──
+const WT_PERIODS = {
+  jan26:{ name:'Jan 1, 2026',  pbj:'Jul 1 – Sep 30, 2025',  snap:'Sep 30, 2025',  bench:3.9016,  adj:0.7122 },
+  apr26:{ name:'Apr 1, 2026',  pbj:'Oct 1 – Dec 31, 2025',  snap:'Dec 31, 2025',  bench:3.88886, adj:0.7122 },
+  jul26:{ name:'Jul 1, 2026',  pbj:'Jan 1 – Mar 31, 2026',  snap:'Mar 31, 2026',  bench:3.88886, adj:0.7122 },
+  oct26:{ name:'Oct 1, 2026',  pbj:'Apr 1 – Jun 30, 2026',  snap:'Jun 30, 2026',  bench:3.88886, adj:0.7122 },
+  jan27:{ name:'Jan 1, 2027',  pbj:'Jul 1 – Sep 30, 2026',  snap:'Sep 30, 2026',  bench:3.88886, adj:0.7122 },
+};
+
+function onPeriodChange(){
+  const p = WT_PERIODS[document.getElementById('wt_period').value];
+  if(!p) return;
+  document.getElementById('wt_nat').value = p.bench;
+  document.getElementById('wt_adj').value = p.adj;
+  updatePeriodInfoBar();
+  renderWT();
+}
+
+function updatePeriodInfoBar(){
+  const p = WT_PERIODS[document.getElementById('wt_period').value];
+  if(!p) return;
+  document.getElementById('pib_name').textContent  = p.name;
+  document.getElementById('pib_pbj').textContent   = p.pbj;
+  document.getElementById('pib_snap').textContent  = p.snap;
+  document.getElementById('pib_bench').textContent = p.bench + ' hPPD';
+  document.getElementById('pib_wks').textContent   = WT_WEEKS.length;
+}
+
+// Fix for timezone bug: parse date string as local time, not UTC
+function parseDateLocal(str){
+  const [y,m,d] = str.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function formatDateLocal(date){
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const d = String(date.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+// Get next Friday from a given date
+function nextFriday(fromDate){
+  const d = new Date(fromDate);
+  const day = d.getDay(); // 0=Sun, 5=Fri
+  const daysUntilFri = (5 - day + 7) % 7 || 7;
+  d.setDate(d.getDate() + daysUntilFri);
+  return d;
+}
+
+function addWeekByDate(){
+  const dateStr = document.getElementById('new_week_date').value;
+  if(!dateStr){ alert('Please select a week ending date first.'); return; }
+  if(WT_FACS.length === 0){ loadDefaultFacs(); return; }
+  if(WT_WEEKS.includes(dateStr)){ alert('This week is already in the tracker.'); return; }
+  WT_WEEKS.push(dateStr);
+  WT_FACS.forEach(f => f.weeks.push({cmi:'',meda:'',hppd:'',bottom4:0,notes:''}));
+  // Advance the date picker by 7 days for next click
+  const next = parseDateLocal(dateStr);
+  next.setDate(next.getDate() + 7);
+  document.getElementById('new_week_date').value = formatDateLocal(next);
+  updatePeriodInfoBar();
+  renderWT();
+}
+
+function addNextWeek(){
+  if(WT_FACS.length === 0){ loadDefaultFacs(); return; }
+  // Get last week in tracker or use date picker
+  let baseDate;
+  if(WT_WEEKS.length > 0){
+    baseDate = parseDateLocal(WT_WEEKS[WT_WEEKS.length - 1]);
+    baseDate.setDate(baseDate.getDate() + 7);
+  } else {
+    baseDate = parseDateLocal(document.getElementById('new_week_date').value || '2026-01-16');
+    baseDate.setDate(baseDate.getDate() + 7);
+  }
+  const nd = formatDateLocal(baseDate);
+  if(WT_WEEKS.includes(nd)){ alert('This week is already in the tracker.'); return; }
   WT_WEEKS.push(nd);
-  WT_FACS.forEach(f=>f.weeks.push({cmi:'',meda:'',hppd:'',bottom4:0,notes:''}));
+  WT_FACS.forEach(f => f.weeks.push({cmi:'',meda:'',hppd:'',bottom4:0,notes:''}));
+  document.getElementById('new_week_date').value = formatDateLocal(new Date(baseDate.getTime() + 7*24*60*60*1000));
+  updatePeriodInfoBar();
   renderWT();
 }
 
 function removeLastWeek(){
   if(WT_WEEKS.length<=1) return;
   WT_WEEKS.pop();WT_FACS.forEach(f=>f.weeks.pop());
+  updatePeriodInfoBar();
   renderWT();
 }
 
@@ -1053,29 +1151,41 @@ function wtSet(fi,wi,field,val){
 }
 
 function renderWT(){
-  if(!WT_FACS.length){document.getElementById('wt_container').innerHTML='<div class="alert alert-info">Click <strong>↺ Reset Facilities</strong> to load Aperion facilities, or add facilities manually.</div>';return;}
+  if(!WT_FACS.length){document.getElementById('wt_container').innerHTML='<div class="alert alert-info">Click <strong>↺ Reset Facilities</strong> to load Aperion facilities.</div>';return;}
   const snap=parseInt(document.getElementById('snap_wk').value)||13;
-  const nat=parseFloat(document.getElementById('wt_nat').value)||3.88886;
+  const nat=parseFloat(document.getElementById('wt_nat').value)||3.9016;
   const adj_v=parseFloat(document.getElementById('wt_adj').value)||.7122;
-  document.getElementById('snap_wk_lbl').textContent=snap;
+  const period=document.getElementById('wt_period').value;
+  const periodData=WT_PERIODS[period]||WT_PERIODS['jan26'];
+  // Update snap label if it exists
+  const snapLbl=document.getElementById('snap_wk_lbl');
+  if(snapLbl) snapLbl.textContent=snap;
+  updatePeriodInfoBar();
 
   // Build header
   let th=`<tr>
-    <th class="fac-sticky" style="min-width:138px;position:sticky;left:0;z-index:6;background:var(--surface)">Facility</th>
+    <th class="fac-sticky" style="min-width:138px;position:sticky;left:0;z-index:6;background:var(--surface)">
+      Facility<br><span style="font-size:8px;color:var(--text3);font-weight:400">${periodData.name} · Snap: Wk ${snap}</span>
+    </th>
     <th style="text-align:center;font-size:9px">CMI<br>Goal</th>
     <th style="text-align:center;font-size:9px">Med A<br>Goal</th>
     <th style="text-align:center;font-size:9px">STRIVE<br>CMI Goal</th>`;
   WT_WEEKS.forEach((d,i)=>{
     const wn=i+1;const isSnap=wn===snap;
-    const shortDate=d.replace(/^\d{4}-/,'');
+    // Show full date in header
+    const dateObj = parseDateLocal(d);
+    const mo = dateObj.toLocaleString('default',{month:'short'});
+    const dy = dateObj.getDate();
+    const yr = dateObj.getFullYear();
     th+=`<th colspan="4" class="${isSnap?'wk-snap':''}" style="text-align:center;border-left:1px solid var(--border)">
-      <div style="font-size:10px;font-weight:600;color:${isSnap?'var(--amber)':'var(--accent)'}">WK ${wn}${isSnap?' ▲':''}</div>
-      <div class="week-date" style="font-size:9px;color:var(--text2)">${shortDate}</div>
+      <div style="font-size:10px;font-weight:700;color:${isSnap?'var(--amber)':'var(--accent)'}">WK ${wn}${isSnap?' ▲ SNAP':''}</div>
+      <div style="font-size:9px;color:var(--text2)">${mo} ${dy}</div>
+      <div style="font-size:8px;color:var(--text3)">${yr}</div>
     </th>`;
   });
-  th+=`<th style="text-align:center;color:var(--green);white-space:nowrap">Qtr<br>hPPD</th>
-    <th style="text-align:center;color:var(--purple)">STRIVE<br>%</th>
-    <th style="text-align:center;color:var(--accent)">STRIVE<br>$/day</th></tr>`;
+  th+=`<th style="text-align:center;color:var(--green);white-space:nowrap;font-size:9px">Qtr Avg<br>hPPD</th>
+    <th style="text-align:center;color:var(--purple);font-size:9px">Proj<br>STRIVE %</th>
+    <th style="text-align:center;color:var(--accent);font-size:9px">STRIVE<br>$/day</th></tr>`;
 
   // Sub-header
   th+=`<tr><th class="fac-sticky" style="position:sticky;left:0;z-index:6;background:var(--surface2)"></th><th></th><th></th><th></th>`;
@@ -1431,13 +1541,25 @@ function switchTab(id,btn){
 // ════════════════════════════════════════════════════
 (function init(){
   loadCfgLocal();
+
+  // Set date picker to next Friday from today
+  const today = new Date();
+  const nextFri = nextFriday(today);
+  document.getElementById('new_week_date').value = formatDateLocal(nextFri);
+
+  // Set Jan 2026 as default period and load its benchmarks
+  document.getElementById('wt_period').value = 'jan26';
+  document.getElementById('wt_nat').value = '3.9016';
+
   const restored=loadLocal();
   if(restored&&WT_FACS.length){
     renderWT();
+    updatePeriodInfoBar();
     setStatus('Loaded saved data ('+WT_FACS.length+' facilities, '+WT_WEEKS.length+' weeks)','amber');
   }else{
     loadDefaultFacs();
-    setStatus('Running in local mode — data saves in your browser','amber');
+    updatePeriodInfoBar();
+    setStatus('Running in local mode — data saves in your browser automatically','amber');
   }
   calcRate();runScenarios();buildTiers();calcSA();
 })();
