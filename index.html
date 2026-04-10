@@ -232,6 +232,15 @@
         </select>
       </div>
 
+      <!-- QUARTER FILTER TOGGLE -->
+      <div style="display:flex;align-items:center;gap:6px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:8px;padding:4px 10px">
+        <label style="font-size:11px;font-weight:700;color:var(--accent);white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:6px">
+          <input type="checkbox" id="filter_qtr" onchange="renderWT()" checked
+            style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer">
+          Show current quarter only
+        </label>
+      </div>
+
       <div style="display:flex;align-items:center;gap:6px">
         <label class="form-label" style="margin:0;white-space:nowrap;font-size:10px">Snapshot wk:</label>
         <input type="number" id="snap_wk" min="1" max="20" value="13" style="width:48px;font-size:12px;padding:5px 8px" oninput="renderWT()">
@@ -1198,17 +1207,37 @@ function wtSet(fi,wi,field,val){
   window._saveTimer=setTimeout(()=>maybeSyncSP(),2000);
 }
 
+function getQtrDateRange(key){
+  const ranges={
+    q1_2026:{start:'2026-01-01',end:'2026-03-31'},
+    q2_2026:{start:'2026-04-01',end:'2026-06-30'},
+    q3_2026:{start:'2026-07-01',end:'2026-09-30'},
+    q4_2026:{start:'2026-10-01',end:'2026-12-31'},
+    q1_2027:{start:'2027-01-01',end:'2027-03-31'},
+  };
+  return ranges[key]||{start:'2026-01-01',end:'2099-12-31'};
+}
+function dateInQtr(d,start,end){return d>=start&&d<=end;}
+
 function renderWT(){
   if(!WT_FACS.length){document.getElementById('wt_container').innerHTML='<div class="alert alert-info">Click <strong>↺ Reset Facilities</strong> to load Aperion facilities.</div>';return;}
   const snap=parseInt(document.getElementById('snap_wk').value)||13;
   const nat=parseFloat(document.getElementById('wt_nat').value)||3.9016;
   const adj_v=parseFloat(document.getElementById('wt_adj').value)||.7122;
   const period=document.getElementById('wt_period').value;
-  const periodData=WT_PERIODS[period]||WT_PERIODS['jan26'];
-  // Update snap label if it exists
+  const periodData=WT_PERIODS[period]||WT_PERIODS['q1_2026'];
+  const filterOn=document.getElementById('filter_qtr')?document.getElementById('filter_qtr').checked:false;
+  const qtrRange=getQtrDateRange(period);
   const snapLbl=document.getElementById('snap_wk_lbl');
   if(snapLbl) snapLbl.textContent=snap;
   updatePeriodInfoBar();
+
+  // Filter visible week indices to current quarter if toggle is on
+  const visibleIdxs=WT_WEEKS.map((d,i)=>({d,i})).filter(({d})=>!filterOn||dateInQtr(d,qtrRange.start,qtrRange.end)).map(({i})=>i);
+  if(visibleIdxs.length===0){
+    document.getElementById('wt_container').innerHTML=`<div class="alert alert-warn">No weeks in ${periodData.name} yet. Click <strong>+ Add This Week</strong> or <strong>+ Next Friday</strong> to add weeks for this quarter.</div>`;
+    return;
+  }
 
   // Build header
   let th=`<tr>
@@ -1218,13 +1247,13 @@ function renderWT(){
     <th style="text-align:center;font-size:9px">CMI<br>Goal</th>
     <th style="text-align:center;font-size:9px">Med A<br>Goal</th>
     <th style="text-align:center;font-size:9px">STRIVE<br>CMI Goal</th>`;
-  WT_WEEKS.forEach((d,i)=>{
-    const wn=i+1;const isSnap=wn===snap;
-    // Show full date in header
-    const dateObj = parseDateLocal(d);
-    const mo = dateObj.toLocaleString('default',{month:'short'});
-    const dy = dateObj.getDate();
-    const yr = dateObj.getFullYear();
+  visibleIdxs.forEach((globalIdx,visIdx)=>{
+    const d=WT_WEEKS[globalIdx];
+    const wn=visIdx+1;const isSnap=wn===snap;
+    const dateObj=parseDateLocal(d);
+    const mo=dateObj.toLocaleString('default',{month:'short'});
+    const dy=dateObj.getDate();
+    const yr=dateObj.getFullYear();
     th+=`<th colspan="4" class="${isSnap?'wk-snap':''}" style="text-align:center;border-left:1px solid var(--border)">
       <div style="font-size:10px;font-weight:700;color:${isSnap?'var(--amber)':'var(--accent)'}">WK ${wn}${isSnap?' ▲ SNAP':''}</div>
       <div style="font-size:9px;color:var(--text2)">${mo} ${dy}</div>
@@ -1236,9 +1265,9 @@ function renderWT(){
     <th style="text-align:center;color:var(--accent);font-size:9px">STRIVE<br>$/day</th></tr>`;
 
   // Sub-header
-  th+=`<tr><th class="fac-sticky" style="position:sticky;left:0;z-index:6;background:var(--surface2)"></th><th></th><th></th><th></th>`;
-  WT_WEEKS.forEach((_,i)=>{
-    const isSnap=(i+1)===snap;
+  th+=`<tr><th class="fac-sticky" style="position:sticky;left:0;z-index:6;background:#f9f9f9"></th><th></th><th></th><th></th>`;
+  visibleIdxs.forEach((_gi,visIdx)=>{
+    const isSnap=(visIdx+1)===snap;
     const bc=isSnap?'background:rgba(255,176,32,.08)':'';
     const bl=isSnap?'border-left:2px solid var(--amber)':'border-left:1px solid var(--border)';
     th+=`<th style="text-align:center;font-size:9px;color:var(--text2);${bc};${bl}">CMI</th>
@@ -1248,10 +1277,11 @@ function renderWT(){
   });
   th+=`<th></th><th></th><th></th></tr>`;
 
-  // Rows
+  // Rows — hPPD average uses only visible weeks
   let rows='';
   WT_FACS.forEach((f,fi)=>{
-    const hppdVals=f.weeks.map(w=>parseFloat(w.hppd)||0).filter(v=>v>0);
+    const visibleWeeks=visibleIdxs.map(gi=>f.weeks[gi]).filter(Boolean);
+    const hppdVals=visibleWeeks.map(w=>parseFloat(w.hppd)||0).filter(v=>v>0);
     const avgH=hppdVals.length?hppdVals.reduce((a,b)=>a+b)/hppdVals.length:0;
     const qsp=avgH>0?spct(avgH,nat,adj_v):0;
     const qsd=getSD(qsp);
@@ -1262,42 +1292,41 @@ function renderWT(){
       <td class="goal-td">$${f.meda_goal}</td>
       <td class="goal-td">${f.strive_cmi_goal||'—'}</td>`;
 
-    f.weeks.forEach((w,wi)=>{
-      const isSnap=(wi+1)===snap;
+    visibleIdxs.forEach((globalIdx,visIdx)=>{
+      const w=f.weeks[globalIdx]||{cmi:'',meda:'',hppd:'',bottom4:0};
+      const isSnap=(visIdx+1)===snap;
       const bc=isSnap?'background:rgba(255,176,32,.05);':'';
       const bl=isSnap?'border-left:2px solid var(--amber) !important;':'border-left:1px solid var(--border);';
       const cv=parseFloat(w.cmi)||0;
       const mv=parseFloat(String(w.meda).replace(/[$,]/g,''))||0;
-      const hv=parseFloat(w.hppd)||0;
       const cOk=cv>0&&cv>=f.cmi_goal;
       const mOk=mv>0&&mv>=f.meda_goal;
-      // Display Med A with $ prefix if it has a value
-      const medaDisplay = w.meda !== '' && w.meda !== undefined ? String(w.meda).replace(/^\$/,'') : '';
+      const medaDisplay=w.meda!==''&&w.meda!==undefined?String(w.meda).replace(/^\$/,''):'';
       rows+=`
         <td style="${bc}${bl}text-align:center;padding:3px 4px">
-          <input class="cell-in" id="ci_${fi}_${wi}" type="text" inputmode="decimal"
+          <input class="cell-in" type="text" inputmode="decimal"
             value="${w.cmi}" placeholder="0.00"
-            onchange="wtSet(${fi},${wi},'cmi',this.value)"
-            oninput="colorCMIcell(this,${cv>0?(cOk?1:0):2},${f.cmi_goal})"
+            onchange="wtSet(${fi},${globalIdx},'cmi',this.value)"
+            oninput="colorCMIcell(this,0,${f.cmi_goal})"
             style="width:58px;color:${cv>0?(cOk?'var(--green)':'var(--red)'):'var(--text3)'}">
         </td>
         <td style="${bc}text-align:center;padding:3px 4px">
-          <input class="cell-in" id="ma_${fi}_${wi}" type="text" inputmode="decimal"
+          <input class="cell-in" type="text" inputmode="decimal"
             value="${medaDisplay}" placeholder="000"
-            onchange="wtSet(${fi},${wi},'meda',this.value)"
-            oninput="colorMedAcell(this,${mv>0?(mOk?1:0):2},${f.meda_goal})"
+            onchange="wtSet(${fi},${globalIdx},'meda',this.value)"
+            oninput="colorMedAcell(this,0,${f.meda_goal})"
             style="width:68px;color:${mv>0?(mOk?'var(--green)':'var(--red)'):'var(--text3)'}">
         </td>
         <td style="${bc}text-align:center;padding:3px 4px">
-          <input class="cell-in" id="hp_${fi}_${wi}" type="text" inputmode="decimal"
+          <input class="cell-in" type="text" inputmode="decimal"
             value="${w.hppd}" placeholder="0.00"
-            onchange="wtSet(${fi},${wi},'hppd',this.value)"
+            onchange="wtSet(${fi},${globalIdx},'hppd',this.value)"
             style="width:58px;color:var(--purple)">
         </td>
         <td style="${bc}text-align:center;padding:3px 4px">
-          <input class="cell-in" id="b4_${fi}_${wi}" type="text" inputmode="numeric"
+          <input class="cell-in" type="text" inputmode="numeric"
             value="${w.bottom4||''}" placeholder="0"
-            onchange="wtSet(${fi},${wi},'bottom4',this.value)"
+            onchange="wtSet(${fi},${globalIdx},'bottom4',this.value)"
             style="width:40px;color:var(--text2)">
         </td>`;
     });
