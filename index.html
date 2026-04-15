@@ -259,6 +259,10 @@
       <div style="margin-left:auto;display:flex;gap:6px">
         <button class="btn btn-success btn-sm" onclick="exportXLSX()">⬇ Excel</button>
         <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ CSV</button>
+        <label class="btn btn-primary btn-sm" style="cursor:pointer;margin:0" title="Upload completed Excel template">
+          ⬆ Upload Excel
+          <input type="file" id="upload_xlsx" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleUpload(this)">
+        </label>
         <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨 Print</button>
       </div>
     </div>
@@ -1702,8 +1706,117 @@ function switchTab(id,btn){
 }
 
 // ════════════════════════════════════════════════════
-// INIT
+// EXCEL UPLOAD — reads template and merges into tracker
 // ════════════════════════════════════════════════════
+function handleUpload(input){
+  const file = input.files[0];
+  if(!file){ return; }
+  input.value = ''; // reset so same file can be re-uploaded
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb   = XLSX.read(data, {type:'array', cellDates:true});
+
+      // Support both the template sheet name and plain CSV
+      const sheetName = wb.SheetNames.find(n =>
+        n.toLowerCase().includes('weekly') || n.toLowerCase().includes('data')
+      ) || wb.SheetNames[0];
+
+      const ws   = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+
+      if(!rows.length){ alert('No data found in the uploaded file.'); return; }
+
+      // Column name normalizer — handles variations in header names
+      function norm(s){ return String(s).toLowerCase().replace(/[\s_\-\.]/g,''); }
+
+      // Find column keys from first row
+      const keys = Object.keys(rows[0]);
+      const findKey = (...candidates) => keys.find(k =>
+        candidates.some(c => norm(k) === norm(c) || norm(k).includes(norm(c)))
+      );
+
+      const kFac   = findKey('Facility','FacilityName','Facility ');
+      const kWeek  = findKey('Week End','WeekEnd','Week','Date');
+      const kCMI   = findKey('CMI','cmi');
+      const kMedA  = findKey('Med A Rate','MedA','MedARate','Medicare','Med A');
+      const kHPPD  = findKey('hPPD','HPPD','hppd');
+      const kBot4  = findKey('Bottom 4','Bottom4','Bot4','bottom4','Bottom 4 ');
+
+      if(!kFac || !kWeek){
+        alert('Could not find Facility or Week End columns.\nMake sure you\'re uploading the Aperion Weekly Upload Template.');
+        return;
+      }
+
+      let added = 0, updated = 0, skipped = 0;
+
+      rows.forEach(row => {
+        const facRaw = String(row[kFac]||'').trim();
+        if(!facRaw) return;
+
+        // Normalize date to YYYY-MM-DD
+        let weekStr = '';
+        const rawDate = row[kWeek];
+        if(rawDate instanceof Date){
+          const y = rawDate.getFullYear();
+          const m = String(rawDate.getMonth()+1).padStart(2,'0');
+          const d = String(rawDate.getDate()).padStart(2,'0');
+          weekStr = `${y}-${m}-${d}`;
+        } else {
+          weekStr = String(rawDate||'').trim().split('T')[0];
+        }
+        if(!weekStr || weekStr.length < 8){ skipped++; return; }
+
+        // Match facility by name (fuzzy — strips spaces/case)
+        const facIdx = WT_FACS.findIndex(f =>
+          norm(f.name) === norm(facRaw) ||
+          norm(f.name).includes(norm(facRaw)) ||
+          norm(facRaw).includes(norm(f.name))
+        );
+        if(facIdx < 0){ skipped++; return; }
+
+        // Find or create week slot
+        let weekIdx = WT_WEEKS.indexOf(weekStr);
+        if(weekIdx < 0){
+          // Insert week in chronological order
+          const insertAt = WT_WEEKS.findIndex(w => w > weekStr);
+          if(insertAt < 0){
+            WT_WEEKS.push(weekStr);
+            weekIdx = WT_WEEKS.length - 1;
+            WT_FACS.forEach(f => f.weeks.push({cmi:'',meda:'',hppd:'',bottom4:0,notes:''}));
+          } else {
+            WT_WEEKS.splice(insertAt, 0, weekStr);
+            weekIdx = insertAt;
+            WT_FACS.forEach(f => f.weeks.splice(insertAt, 0, {cmi:'',meda:'',hppd:'',bottom4:0,notes:''}));
+          }
+          added++;
+        } else {
+          updated++;
+        }
+
+        // Write values — only overwrite if the uploaded cell has a value
+        const w = WT_FACS[facIdx].weeks[weekIdx];
+        if(kCMI  && row[kCMI]  !== '') w.cmi     = String(row[kCMI]).replace(/[$,]/g,'').trim();
+        if(kMedA && row[kMedA] !== '') w.meda    = String(row[kMedA]).replace(/[$,]/g,'').trim();
+        if(kHPPD && row[kHPPD] !== '') w.hppd    = String(row[kHPPD]).replace(/[$,]/g,'').trim();
+        if(kBot4 && row[kBot4] !== '') w.bottom4 = String(row[kBot4]).replace(/[$,]/g,'').trim();
+      });
+
+      saveLocal();
+      renderWT();
+      updatePeriodInfoBar();
+      setStatus(`Upload complete — ${added} new weeks added, ${updated} weeks updated${skipped?' ('+skipped+' rows skipped)':''}`, 'green');
+      alert(`✅ Upload complete!\n\n${added} new week${added!==1?'s':''} added\n${updated} week${updated!==1?'s':''} updated${skipped?'\n'+skipped+' rows skipped (unrecognized facility or missing date)':''}`);
+
+    } catch(err){
+      console.error('Upload error:', err);
+      alert('Upload failed: ' + err.message + '\n\nMake sure you\'re uploading an .xlsx file from the Aperion Weekly Upload Template.');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
 (function init(){
   loadCfgLocal();
 
