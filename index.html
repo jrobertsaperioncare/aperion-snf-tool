@@ -802,18 +802,13 @@ function loadLocal(){
     const d=JSON.parse(raw);
     WT_FACS=d.facs||[];
     WT_WEEKS=d.weeks||[];
-    // Restore UI state
+    // Restore UI settings
     if(d.period) document.getElementById('wt_period').value = d.period;
     if(d.nat)    document.getElementById('wt_nat').value    = d.nat;
     if(d.adj)    document.getElementById('wt_adj').value    = d.adj;
     if(d.snap)   document.getElementById('snap_wk').value   = d.snap;
-    // Restore date picker — use saved value OR auto-advance past last known week
-    if(d.datePicker){
-      document.getElementById('new_week_date').value = d.datePicker;
-    } else if(WT_WEEKS.length > 0){
-      // Fall back: set picker to one week past the last tracked week
-      document.getElementById('new_week_date').value = addDays(WT_WEEKS[WT_WEEKS.length-1], 7);
-    }
+    // Always derive date picker from actual last week — never trust a saved string
+    syncDatePicker();
     return true;
   }catch(e){return false}
 }
@@ -1186,16 +1181,28 @@ function addDays(dateStr, n){
   return formatDateLocal(d);
 }
 
+// Always keep date picker one week ahead of the last tracked week
+function syncDatePicker(){
+  if(WT_WEEKS.length > 0){
+    const sorted = [...WT_WEEKS].sort();
+    const last = sorted[sorted.length - 1];
+    document.getElementById('new_week_date').value = addDays(last, 7);
+  }
+}
+
 function addWeekByDate(){
   if(WT_FACS.length === 0){ loadDefaultFacs(); }
   const dateStr = document.getElementById('new_week_date').value;
   if(!dateStr){ alert('Please select a week ending date.'); return; }
-  if(WT_WEEKS.includes(dateStr)){ alert('This week is already in the tracker.'); return; }
+  if(WT_WEEKS.includes(dateStr)){
+    // Already in tracker — just advance the picker past it silently
+    document.getElementById('new_week_date').value = addDays(dateStr, 7);
+    alert('That week is already in the tracker. Date picker has been advanced to ' + addDays(dateStr, 7) + '.');
+    return;
+  }
   WT_WEEKS.push(dateStr);
   WT_FACS.forEach(f => f.weeks.push({cmi:'',meda:'',hppd:'',bottom4:0,notes:''}));
-  // Advance date picker +7 days and save immediately so it persists on reload
-  const nextDate = addDays(dateStr, 7);
-  document.getElementById('new_week_date').value = nextDate;
+  syncDatePicker();
   saveLocal();
   updatePeriodInfoBar();
   renderWT();
@@ -1203,15 +1210,18 @@ function addWeekByDate(){
 
 function addNextWeek(){
   if(WT_FACS.length === 0){ loadDefaultFacs(); }
-  const baseStr = WT_WEEKS.length > 0
-    ? WT_WEEKS[WT_WEEKS.length - 1]
-    : document.getElementById('new_week_date').value || '2026-01-02';
+  // Always base off the actual last week in the tracker — never the picker value
+  const sorted = [...WT_WEEKS].sort();
+  const baseStr = sorted.length > 0 ? sorted[sorted.length - 1] : '2026-01-02';
   const nd = addDays(baseStr, 7);
-  if(WT_WEEKS.includes(nd)){ alert('This week is already in the tracker.'); return; }
+  if(WT_WEEKS.includes(nd)){
+    syncDatePicker();
+    alert('That week is already in the tracker. Date picker has been advanced.');
+    return;
+  }
   WT_WEEKS.push(nd);
   WT_FACS.forEach(f => f.weeks.push({cmi:'',meda:'',hppd:'',bottom4:0,notes:''}));
-  const nextDate = addDays(nd, 7);
-  document.getElementById('new_week_date').value = nextDate;
+  syncDatePicker();
   saveLocal();
   updatePeriodInfoBar();
   renderWT();
@@ -1311,6 +1321,8 @@ function renderWT(){
   const snapLbl=document.getElementById('snap_wk_lbl');
   if(snapLbl) snapLbl.textContent=snap;
   updatePeriodInfoBar();
+  // Always keep date picker one week ahead of last tracked week
+  syncDatePicker();
 
   // Filter visible week indices to current quarter if toggle is on
   const visibleIdxs=WT_WEEKS.map((d,i)=>({d,i})).filter(({d})=>!filterOn||dateInQtr(d,qtrRange.start,qtrRange.end)).map(({i})=>i);
