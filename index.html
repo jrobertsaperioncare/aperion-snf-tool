@@ -782,7 +782,16 @@ const ts=()=>new Date().toLocaleTimeString();
 // ════════════════════════════════════════════════════
 const LS_KEY='aperion_snf_tracker_v2';
 function saveLocal(){
-  const d={facs:WT_FACS,weeks:WT_WEEKS,saved:new Date().toISOString()};
+  const d={
+    facs:WT_FACS,
+    weeks:WT_WEEKS,
+    saved:new Date().toISOString(),
+    datePicker:document.getElementById('new_week_date').value,
+    period:document.getElementById('wt_period').value,
+    nat:document.getElementById('wt_nat').value,
+    adj:document.getElementById('wt_adj').value,
+    snap:document.getElementById('snap_wk').value,
+  };
   localStorage.setItem(LS_KEY,JSON.stringify(d));
   setStatus('Saved locally at '+ts(),'amber');
 }
@@ -791,8 +800,20 @@ function loadLocal(){
     const raw=localStorage.getItem(LS_KEY);
     if(!raw) return false;
     const d=JSON.parse(raw);
-    WT_FACS=d.facs||[];WT_WEEKS=d.weeks||[];
-    console.log('Loaded from localStorage');
+    WT_FACS=d.facs||[];
+    WT_WEEKS=d.weeks||[];
+    // Restore UI state
+    if(d.period) document.getElementById('wt_period').value = d.period;
+    if(d.nat)    document.getElementById('wt_nat').value    = d.nat;
+    if(d.adj)    document.getElementById('wt_adj').value    = d.adj;
+    if(d.snap)   document.getElementById('snap_wk').value   = d.snap;
+    // Restore date picker — use saved value OR auto-advance past last known week
+    if(d.datePicker){
+      document.getElementById('new_week_date').value = d.datePicker;
+    } else if(WT_WEEKS.length > 0){
+      // Fall back: set picker to one week past the last tracked week
+      document.getElementById('new_week_date').value = addDays(WT_WEEKS[WT_WEEKS.length-1], 7);
+    }
     return true;
   }catch(e){return false}
 }
@@ -1172,15 +1193,16 @@ function addWeekByDate(){
   if(WT_WEEKS.includes(dateStr)){ alert('This week is already in the tracker.'); return; }
   WT_WEEKS.push(dateStr);
   WT_FACS.forEach(f => f.weeks.push({cmi:'',meda:'',hppd:'',bottom4:0,notes:''}));
-  // Auto-advance date picker +7 days ready for next entry
-  document.getElementById('new_week_date').value = addDays(dateStr, 7);
+  // Advance date picker +7 days and save immediately so it persists on reload
+  const nextDate = addDays(dateStr, 7);
+  document.getElementById('new_week_date').value = nextDate;
+  saveLocal();
   updatePeriodInfoBar();
   renderWT();
 }
 
 function addNextWeek(){
   if(WT_FACS.length === 0){ loadDefaultFacs(); }
-  // Base off last week in tracker, or off the date picker if tracker is empty
   const baseStr = WT_WEEKS.length > 0
     ? WT_WEEKS[WT_WEEKS.length - 1]
     : document.getElementById('new_week_date').value || '2026-01-02';
@@ -1188,8 +1210,9 @@ function addNextWeek(){
   if(WT_WEEKS.includes(nd)){ alert('This week is already in the tracker.'); return; }
   WT_WEEKS.push(nd);
   WT_FACS.forEach(f => f.weeks.push({cmi:'',meda:'',hppd:'',bottom4:0,notes:''}));
-  // Set date picker to the week after the one we just added
-  document.getElementById('new_week_date').value = addDays(nd, 7);
+  const nextDate = addDays(nd, 7);
+  document.getElementById('new_week_date').value = nextDate;
+  saveLocal();
   updatePeriodInfoBar();
   renderWT();
 }
@@ -1865,17 +1888,19 @@ function handleUpload(input){
 (function init(){
   loadCfgLocal();
 
-  // Default to Q1 2026
+  // Set defaults first (loadLocal will overwrite if saved data exists)
   const defaultKey = 'q1_2026';
   document.getElementById('wt_period').value = defaultKey;
   const defP = WT_PERIODS[defaultKey];
-  document.getElementById('wt_nat').value   = defP.bench;
-  document.getElementById('wt_adj').value   = defP.adj;
-  document.getElementById('snap_wk').value  = defP.snapWk;
-  document.getElementById('new_week_date').value = addDays(defP.startDate, 21); // wk 4 ready
+  document.getElementById('wt_nat').value  = defP.bench;
+  document.getElementById('wt_adj').value  = defP.adj;
+  document.getElementById('snap_wk').value = defP.snapWk;
+  // Default date picker — will be overridden by loadLocal if saved state exists
+  document.getElementById('new_week_date').value = addDays(defP.startDate, 21);
 
   const restored = loadLocal();
   if(restored && WT_FACS.length){
+    // loadLocal already restored the date picker, period, nat, adj, snap
     renderWT();
     updatePeriodInfoBar();
     setStatus('Loaded saved data — '+WT_FACS.length+' facilities, '+WT_WEEKS.length+' weeks','amber');
