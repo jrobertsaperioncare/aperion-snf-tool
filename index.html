@@ -676,28 +676,43 @@ const SC_DEFS=[
   {n:'CMI 1.60 + STRIVE 0.86',cmi:1.60,s:.86,desc:'Status quo'},
 ];
 const DEFAULT_FACS=[
-  {name:'Niles',        cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.56},
-  {name:'Elgin',        cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.46},
-  {name:'Fox River',    cmi_goal:1.65,meda_goal:750,strive_cmi_goal:1.66},
-  {name:'Forest Park',  cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.56},
-  {name:'Westchester',  cmi_goal:1.65,meda_goal:750,strive_cmi_goal:1.60},
-  {name:'Burbank',      cmi_goal:1.65,meda_goal:750,strive_cmi_goal:1.60},
-  {name:'International',cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.60},
-  {name:'Lakeshore',    cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.55},
-  {name:'Dekalb',       cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.70},
-  {name:'Oak Lawn',     cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.55},
-  {name:'Chicago Hts',  cmi_goal:1.45,meda_goal:730,strive_cmi_goal:0},
-  {name:'Dolton',       cmi_goal:1.60,meda_goal:730,strive_cmi_goal:1.55},
-  {name:'Midlothian',   cmi_goal:1.55,meda_goal:730,strive_cmi_goal:1.50},
-  {name:'Parkridge',    cmi_goal:1.20,meda_goal:730,strive_cmi_goal:1.18},
-  {name:'West Chicago', cmi_goal:1.40,meda_goal:730,strive_cmi_goal:0},
-  {name:'Wilmington',   cmi_goal:1.40,meda_goal:730,strive_cmi_goal:0},
-  {name:'Alta Fairmont',cmi_goal:1.55,meda_goal:750,strive_cmi_goal:1.40},
-  {name:'Alta Oakbrook',cmi_goal:1.50,meda_goal:750,strive_cmi_goal:1.60},
-  {name:'Alta Waconda', cmi_goal:1.60,meda_goal:730,strive_cmi_goal:1.53},
-  {name:'Wesley',       cmi_goal:1.50,meda_goal:750,strive_cmi_goal:1.40},
+  // ── Illinois ──
+  {name:'Niles',        cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.56,region:'IL'},
+  {name:'Elgin',        cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.46,region:'IL'},
+  {name:'Fox River',    cmi_goal:1.65,meda_goal:750,strive_cmi_goal:1.66,region:'IL'},
+  {name:'Forest Park',  cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.56,region:'IL'},
+  {name:'Westchester',  cmi_goal:1.65,meda_goal:750,strive_cmi_goal:1.60,region:'IL'},
+  {name:'Burbank',      cmi_goal:1.65,meda_goal:750,strive_cmi_goal:1.60,region:'IL'},
+  {name:'International',cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.60,region:'IL'},
+  {name:'Lakeshore',    cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.55,region:'IL'},
+  {name:'Dekalb',       cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.70,region:'IL'},
+  {name:'Oak Lawn',     cmi_goal:1.60,meda_goal:750,strive_cmi_goal:1.55,region:'IL'},
+  {name:'Chicago Hts',  cmi_goal:1.45,meda_goal:730,strive_cmi_goal:0,   region:'IL'},
+  {name:'Dolton',       cmi_goal:1.60,meda_goal:730,strive_cmi_goal:1.55,region:'IL'},
+  {name:'Midlothian',   cmi_goal:1.55,meda_goal:730,strive_cmi_goal:1.50,region:'IL'},
+  {name:'Parkridge',    cmi_goal:1.20,meda_goal:730,strive_cmi_goal:1.18,region:'IL'},
+  {name:'West Chicago', cmi_goal:1.40,meda_goal:730,strive_cmi_goal:0,   region:'IL'},
+  {name:'Wilmington',   cmi_goal:1.40,meda_goal:730,strive_cmi_goal:0,   region:'IL'},
+  {name:'Alta Fairmont',cmi_goal:1.55,meda_goal:750,strive_cmi_goal:1.40,region:'IL'},
+  {name:'Alta Oakbrook',cmi_goal:1.50,meda_goal:750,strive_cmi_goal:1.60,region:'IL'},
+  {name:'Alta Waconda', cmi_goal:1.60,meda_goal:730,strive_cmi_goal:1.53,region:'IL'},
+  {name:'Wesley',       cmi_goal:1.50,meda_goal:750,strive_cmi_goal:1.40,region:'IL'},
+  // ── Indiana ──
+  {name:'Arbors',       cmi_goal:1.60,meda_goal:730,strive_cmi_goal:0,   region:'IN'},
+  {name:'Demotte',      cmi_goal:1.50,meda_goal:730,strive_cmi_goal:0,   region:'IN'},
+  {name:'Tolleston',    cmi_goal:1.50,meda_goal:730,strive_cmi_goal:0,   region:'IN'},
+  {name:'Kokomo',       cmi_goal:1.65,meda_goal:730,strive_cmi_goal:0,   region:'IN'},
+  {name:'Marion',       cmi_goal:1.50,meda_goal:730,strive_cmi_goal:0,   region:'IN'},
+  {name:'Peru',         cmi_goal:1.60,meda_goal:730,strive_cmi_goal:0,   region:'IN'},
+  {name:'Hanover',      cmi_goal:1.40,meda_goal:700,strive_cmi_goal:0,   region:'IN'},
+  {name:'Greenfield',   cmi_goal:1.40,meda_goal:700,strive_cmi_goal:0,   region:'IN'},
+  {name:'Lincoln',      cmi_goal:1.40,meda_goal:700,strive_cmi_goal:0,   region:'IN'},
+  {name:'Monroe',       cmi_goal:1.40,meda_goal:700,strive_cmi_goal:0,   region:'IN'},
+  {name:'Summerfield',  cmi_goal:1.20,meda_goal:700,strive_cmi_goal:0,   region:'IN'},
+  {name:'Vincennes',    cmi_goal:1.40,meda_goal:700,strive_cmi_goal:0,   region:'IN'},
 ];
 const SEED={
+  // Illinois
   'Niles':[{cmi:1.68,meda:796,hppd:2.81},{cmi:1.67,meda:840,hppd:2.80},{cmi:1.69,meda:890,hppd:2.80}],
   'Elgin':[{cmi:1.45,meda:624,hppd:2.50},{cmi:1.56,meda:644,hppd:2.69},{cmi:1.58,meda:655,hppd:2.69}],
   'Fox River':[{cmi:1.53,meda:767,hppd:3.16},{cmi:1.72,meda:765,hppd:3.16},{cmi:1.73,meda:754,hppd:3.16}],
@@ -718,6 +733,19 @@ const SEED={
   'Alta Oakbrook':[{cmi:1.38,meda:738,hppd:4.47},{cmi:1.45,meda:770,hppd:4.47},{cmi:1.39,meda:796,hppd:4.47}],
   'Alta Waconda':[{cmi:1.59,meda:761,hppd:3.67},{cmi:1.56,meda:818,hppd:3.67},{cmi:1.56,meda:817,hppd:3.67}],
   'Wesley':[{cmi:1.45,meda:749,hppd:3.71},{cmi:1.45,meda:761,hppd:3.71},{cmi:1.38,meda:731,hppd:3.71}],
+  // Indiana
+  'Arbors':[{cmi:1.45,meda:622,hppd:0},{cmi:1.48,meda:677,hppd:0},{cmi:1.77,meda:654,hppd:0}],
+  'Demotte':[{cmi:1.47,meda:614,hppd:0},{cmi:1.47,meda:664,hppd:0},{cmi:1.75,meda:722,hppd:0}],
+  'Tolleston':[{cmi:1.51,meda:640,hppd:0},{cmi:1.47,meda:687,hppd:0},{cmi:1.80,meda:751,hppd:0}],
+  'Kokomo':[{cmi:1.57,meda:726,hppd:0},{cmi:1.55,meda:726,hppd:0},{cmi:1.85,meda:0,hppd:0}],
+  'Marion':[{cmi:1.66,meda:598,hppd:0},{cmi:1.63,meda:671,hppd:0},{cmi:1.99,meda:652,hppd:0}],
+  'Peru':[{cmi:1.51,meda:743,hppd:0},{cmi:1.51,meda:725,hppd:0},{cmi:1.85,meda:740,hppd:0}],
+  'Hanover':[{cmi:1.19,meda:721,hppd:0},{cmi:1.20,meda:723,hppd:0},{cmi:1.41,meda:739,hppd:0}],
+  'Greenfield':[{cmi:1.05,meda:643,hppd:0},{cmi:1.09,meda:643,hppd:0},{cmi:1.30,meda:686,hppd:0}],
+  'Lincoln':[{cmi:1.21,meda:666,hppd:0},{cmi:1.22,meda:664,hppd:0},{cmi:1.51,meda:596,hppd:0}],
+  'Monroe':[{cmi:1.25,meda:646,hppd:0},{cmi:1.21,meda:646,hppd:0},{cmi:1.42,meda:0,hppd:0}],
+  'Summerfield':[{cmi:1.09,meda:594,hppd:0},{cmi:1.12,meda:619,hppd:0},{cmi:1.33,meda:777,hppd:0}],
+  'Vincennes':[{cmi:1.46,meda:688,hppd:0},{cmi:1.47,meda:666,hppd:0},{cmi:1.78,meda:691,hppd:0}],
 };
 
 // ════════════════════════════════════════════════════
@@ -1313,7 +1341,24 @@ function renderWT(){
 
   // Rows — hPPD average uses only visible weeks
   let rows='';
+  let lastRegion='';
+  const totalCols = 4 + visibleIdxs.length*4 + 6; // sticky+goals + weeks + summary cols
   WT_FACS.forEach((f,fi)=>{
+    // Insert region divider row when switching IL → IN
+    const region = f.region || 'IL';
+    if(region !== lastRegion){
+      const regionLabel = region === 'IN' ? '▸ INDIANA FACILITIES' : '▸ ILLINOIS FACILITIES';
+      const regionBg = region === 'IN' ? '#FFF3E0' : '#E8F6FF';
+      const regionColor = region === 'IN' ? '#A05000' : '#0680C0';
+      rows += `<tr>
+        <td colspan="${totalCols}" style="background:${regionBg};color:${regionColor};font-weight:700;font-size:10px;
+          letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-top:2px solid ${regionColor};
+          border-bottom:1px solid ${regionColor};position:sticky;left:0">
+          ${regionLabel}
+        </td></tr>`;
+      lastRegion = region;
+    }
+
     const visibleWeeks=visibleIdxs.map(gi=>f.weeks[gi]).filter(Boolean);
     const hppdVals=visibleWeeks.map(w=>parseFloat(w.hppd)||0).filter(v=>v>0);
     const avgH=hppdVals.length?hppdVals.reduce((a,b)=>a+b)/hppdVals.length:0;
@@ -1321,7 +1366,7 @@ function renderWT(){
     const qsd=getSD(qsp);
     const spctCls=qsp>=.95?'pos':qsp>=.85?'warn':'neg';
 
-    rows+=`<tr><td class="fac-sticky">${f.name}</td>
+    rows+=`<tr><td class="fac-sticky">${f.name}<br><span style="font-size:8px;color:var(--text3);font-weight:400">${region}</span></td>
       <td class="goal-td">${f.cmi_goal.toFixed(2)}</td>
       <td class="goal-td">$${f.meda_goal}</td>
       <td class="goal-td">${f.strive_cmi_goal||'—'}</td>`;
