@@ -229,6 +229,9 @@
           <option value="q3_2026">Q3 2026 (Jul–Sep) → Jan Rate</option>
           <option value="q4_2026">Q4 2026 (Oct–Dec) → Apr Rate</option>
           <option value="q1_2027">Q1 2027 (Jan–Mar) → Jul Rate</option>
+          <option value="q2_2027">Q2 2027 (Apr–Jun) → Oct Rate</option>
+          <option value="q3_2027">Q3 2027 (Jul–Sep) → Jan Rate</option>
+          <option value="q4_2027">Q4 2027 (Oct–Dec) → Apr Rate</option>
         </select>
       </div>
 
@@ -1111,11 +1114,14 @@ function loadDefaultFacs(){
 // Q3 Jul–Sep: CMI snap 9/30 | PBJ 4/1–6/30            | Drives JAN rate
 // Q4 Oct–Dec: CMI snap 12/31| PBJ 7/1–9/30            | Drives APR rate
 const WT_PERIODS = {
-  q1_2026:{ name:'Q1 2026 (Jan 1 – Mar 31)',  pbj:'Oct 1 – Dec 31, 2025',  snap:'Mar 31, 2026',  snapWk:13, startDate:'2026-01-02', bench:3.9016,  adj:0.7122, drivesRate:'July 1, 2026 Rate' },
-  q2_2026:{ name:'Q2 2026 (Apr 1 – Jun 30)',  pbj:'Jan 1 – Mar 31, 2026',  snap:'Jun 30, 2026',  snapWk:13, startDate:'2026-04-03', bench:3.88886, adj:0.7122, drivesRate:'Oct 1, 2026 Rate'  },
-  q3_2026:{ name:'Q3 2026 (Jul 1 – Sep 30)',  pbj:'Apr 1 – Jun 30, 2026',  snap:'Sep 30, 2026',  snapWk:13, startDate:'2026-07-03', bench:3.88886, adj:0.7122, drivesRate:'Jan 1, 2027 Rate'  },
-  q4_2026:{ name:'Q4 2026 (Oct 1 – Dec 31)',  pbj:'Jul 1 – Sep 30, 2026',  snap:'Dec 31, 2026',  snapWk:13, startDate:'2026-10-02', bench:3.88886, adj:0.7122, drivesRate:'Apr 1, 2027 Rate'  },
+  q1_2026:{ name:'Q1 2026 (Jan 1 – Mar 31)',  pbj:'Oct 1 – Dec 31, 2025',  snap:'Mar 31, 2026',  snapWk:13, startDate:'2026-01-02', bench:3.9016,  adj:0.7122, drivesRate:'July 1, 2026 Rate'  },
+  q2_2026:{ name:'Q2 2026 (Apr 1 – Jun 30)',  pbj:'Jan 1 – Mar 31, 2026',  snap:'Jun 30, 2026',  snapWk:13, startDate:'2026-04-03', bench:3.88886, adj:0.7122, drivesRate:'Oct 1, 2026 Rate'   },
+  q3_2026:{ name:'Q3 2026 (Jul 1 – Sep 30)',  pbj:'Apr 1 – Jun 30, 2026',  snap:'Sep 30, 2026',  snapWk:13, startDate:'2026-07-03', bench:3.88886, adj:0.7122, drivesRate:'Jan 1, 2027 Rate'   },
+  q4_2026:{ name:'Q4 2026 (Oct 1 – Dec 31)',  pbj:'Jul 1 – Sep 30, 2026',  snap:'Dec 31, 2026',  snapWk:13, startDate:'2026-10-02', bench:3.88886, adj:0.7122, drivesRate:'Apr 1, 2027 Rate'   },
   q1_2027:{ name:'Q1 2027 (Jan 1 – Mar 31)',  pbj:'Oct 1 – Dec 31, 2026',  snap:'Mar 31, 2027',  snapWk:13, startDate:'2027-01-02', bench:3.88886, adj:0.7122, drivesRate:'July 1, 2027 Rate'  },
+  q2_2027:{ name:'Q2 2027 (Apr 1 – Jun 30)',  pbj:'Jan 1 – Mar 31, 2027',  snap:'Jun 30, 2027',  snapWk:13, startDate:'2027-04-02', bench:3.88886, adj:0.7122, drivesRate:'Oct 1, 2027 Rate'   },
+  q3_2027:{ name:'Q3 2027 (Jul 1 – Sep 30)',  pbj:'Apr 1 – Jun 30, 2027',  snap:'Sep 30, 2027',  snapWk:13, startDate:'2027-07-02', bench:3.88886, adj:0.7122, drivesRate:'Jan 1, 2028 Rate'   },
+  q4_2027:{ name:'Q4 2027 (Oct 1 – Dec 31)',  pbj:'Jul 1 – Sep 30, 2027',  snap:'Dec 31, 2027',  snapWk:13, startDate:'2027-10-01', bench:3.88886, adj:0.7122, drivesRate:'Apr 1, 2028 Rate'   },
 };
 
 function onPeriodChange(){
@@ -1132,16 +1138,15 @@ function onPeriodChange(){
   document.getElementById('wt_adj').value  = p.adj;
   document.getElementById('snap_wk').value = p.snapWk;
 
-  // Set date picker to first week of the new quarter so + Add This Week
-  // starts in the right place — but only if no weeks for this quarter exist yet
+  // Set date picker correctly for the new quarter
   const qtrRange = getQtrDateRange(key);
-  const hasQtrWeeks = WT_WEEKS.some(d => d >= qtrRange.start && d <= qtrRange.end);
-  if(!hasQtrWeeks){
-    document.getElementById('new_week_date').value = p.startDate;
+  const qtrWeeks = WT_WEEKS.filter(d => d >= qtrRange.start && d <= qtrRange.end).sort();
+  if(qtrWeeks.length > 0){
+    // Quarter already has weeks — set picker to one week past the last one
+    document.getElementById('new_week_date').value = addDays(qtrWeeks[qtrWeeks.length-1], 7);
   } else {
-    // Advance date picker past the last week already in this quarter
-    const lastQtrWeek = [...WT_WEEKS].filter(d => d >= qtrRange.start && d <= qtrRange.end).sort().pop();
-    document.getElementById('new_week_date').value = addDays(lastQtrWeek, 7);
+    // No weeks yet for this quarter — start at the quarter's first week
+    document.getElementById('new_week_date').value = p.startDate;
   }
 
   updatePeriodInfoBar();
@@ -1181,7 +1186,8 @@ function addDays(dateStr, n){
   return formatDateLocal(d);
 }
 
-// Always keep date picker one week ahead of the last tracked week
+// Sync date picker to one week past the last tracked week
+// Only called explicitly — NOT inside renderWT (to avoid overwriting manual picker changes)
 function syncDatePicker(){
   if(WT_WEEKS.length > 0){
     const sorted = [...WT_WEEKS].sort();
@@ -1304,6 +1310,9 @@ function getQtrDateRange(key){
     q3_2026:{start:'2026-07-01',end:'2026-09-30'},
     q4_2026:{start:'2026-10-01',end:'2026-12-31'},
     q1_2027:{start:'2027-01-01',end:'2027-03-31'},
+    q2_2027:{start:'2027-04-01',end:'2027-06-30'},
+    q3_2027:{start:'2027-07-01',end:'2027-09-30'},
+    q4_2027:{start:'2027-10-01',end:'2027-12-31'},
   };
   return ranges[key]||{start:'2026-01-01',end:'2099-12-31'};
 }
@@ -1321,8 +1330,6 @@ function renderWT(){
   const snapLbl=document.getElementById('snap_wk_lbl');
   if(snapLbl) snapLbl.textContent=snap;
   updatePeriodInfoBar();
-  // Always keep date picker one week ahead of last tracked week
-  syncDatePicker();
 
   // Filter visible week indices to current quarter if toggle is on
   const visibleIdxs=WT_WEEKS.map((d,i)=>({d,i})).filter(({d})=>!filterOn||dateInQtr(d,qtrRange.start,qtrRange.end)).map(({i})=>i);
